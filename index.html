@@ -15,935 +15,629 @@
     --text: #f0f0f0;
     --good: #22c55e;
     --bad: #ef4444;
+    --purple: #7c3aed;
+    --blue: #0ea5e9;
     --radius: 12px;
     --max: 600px;
+    --bar: 64px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; overflow: hidden; }
-  body {
-    background: var(--bg); color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    display: flex; flex-direction: column;
-    touch-action: pan-y;
-  }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 
-  /* Progress */
-  #progress { height: 3px; background: var(--border); flex-shrink: 0; }
-  #progress-fill { height: 100%; background: var(--accent); transition: width .3s ease; }
+  /* ── Main layout ── */
+  #app { display: flex; flex-direction: column; height: 100dvh; }
 
-  /* Deck */
-  #deck { flex: 1; overflow: hidden; position: relative; }
-  .slide {
-    position: absolute; inset: 0;
-    overflow-y: auto; overflow-x: hidden;
-    padding: 28px 20px 20px;
-    opacity: 0; transform: translateX(100%);
-    transition: transform .35s cubic-bezier(.4,0,.2,1), opacity .35s ease;
-    display: flex; flex-direction: column; align-items: center;
-  }
-  .slide.active { opacity: 1; transform: translateX(0); }
-  .slide.prev   { opacity: 0; transform: translateX(-100%); }
-  .slide-inner  { width: 100%; max-width: var(--max); }
-
-  /* Nav */
-  #nav {
+  /* Top header */
+  #header {
+    flex-shrink: 0; padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0;
   }
-  .nbtn {
-    background: var(--surface); border: none; color: var(--text);
-    width: 42px; height: 42px; border-radius: 50%; font-size: 18px;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  #header-kicker { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  #header-title  { font-size: 22px; font-weight: 800; letter-spacing: -.02em; margin-top: 2px; }
+
+  /* Content area */
+  #content { flex: 1; overflow-y: auto; overflow-x: hidden; }
+
+  .view { display: none; padding: 24px 20px 32px; }
+  .view.active { display: block; }
+
+  /* Bottom bar */
+  #bar {
+    flex-shrink: 0; height: var(--bar);
+    display: flex; align-items: stretch;
+    border-top: 1px solid var(--border);
+    background: #0c0c0c;
   }
-  .nbtn:disabled { opacity: .2; }
-  #counter { font-size: 13px; color: var(--muted); }
+  .bar-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; border: none; background: none; color: var(--muted);
+    font-family: inherit; cursor: pointer; font-size: 11px; font-weight: 600;
+    letter-spacing: .04em; transition: color .15s;
+  }
+  .bar-btn .bico { font-size: 20px; }
+  .bar-btn.active { color: var(--accent); }
+  .bar-mid {
+    width: 60px; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #2a2a2a; text-align: center; line-height: 1.2;
+  }
 
-  /* Typography */
-  .kicker { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
-  h1 { font-size: clamp(26px, 7vw, 46px); font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
-  h2 { font-size: clamp(20px, 5vw, 28px); font-weight: 700; letter-spacing: -.02em; line-height: 1.2; margin-bottom: 14px; }
-  .sub { font-size: 14px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+  /* ── Overlays ── */
+  .overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,.7);
+    display: none; align-items: flex-end; justify-content: center;
+  }
+  .overlay.open { display: flex; }
 
-  /* Hours grid */
-  .hours { margin-bottom: 16px; }
-  .hour-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .sheet {
+    background: #161616; border-radius: 20px 20px 0 0;
+    width: 100%; max-width: 600px;
+    transform: translateY(100%); transition: transform .3s cubic-bezier(.4,0,.2,1);
+    max-height: 90dvh; overflow-y: auto;
+  }
+  .overlay.open .sheet { transform: translateY(0); }
+
+  .sheet-handle { width: 40px; height: 4px; background: #2a2a2a; border-radius: 2px; margin: 14px auto 4px; }
+
+  /* ── Drawer ── */
+  #drawer-list { padding: 8px 0 40px; }
+  .drawer-section { padding: 6px 20px 4px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #333; margin-top: 8px; }
+  .drawer-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 20px; cursor: pointer; transition: background .12s;
+  }
+  .drawer-item:active { background: #1e1e1e; }
+  .drawer-icon { font-size: 22px; width: 36px; text-align: center; flex-shrink: 0; }
+  .drawer-name { flex: 1; font-size: 16px; font-weight: 600; }
+  .drawer-badge {
+    font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+    background: var(--surface2); color: var(--muted);
+  }
+  .drawer-badge.has { background: rgba(124,58,237,.2); color: #a78bfa; }
+
+  /* ── Views ── */
+
+  /* Setup */
+  .setup-hero { text-align: center; padding: 16px 0 32px; }
+  .setup-hero .big { font-size: 52px; }
+  .setup-hero h1 { font-size: 32px; font-weight: 800; margin-top: 8px; }
+  .setup-hero p { color: var(--muted); margin-top: 6px; font-size: 15px; }
+  .name-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .name-avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+  .av0 { background: var(--purple); color: #fff; }
+  .av1 { background: var(--blue); color: #fff; }
+  .name-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: 15px; padding: 11px 14px; border-radius: 10px; outline: none; font-family: inherit; }
+  .name-input:focus { border-color: #444; }
+  .section-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 10px; }
+
+  /* Shop view */
+  .shop-kicker { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .hours-block { margin-bottom: 18px; }
+  .hour-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
   .hour-row:last-child { border: none; }
   .hday { color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
-  .hclosed { color: #333; }
+  .hclosed { color: #2e2e2e; }
 
-  /* Suggestions */
-  .suggest-toggle { font-size: 12px; color: var(--muted); cursor: pointer; margin-bottom: 10px; display: inline-block; }
-  .suggests { display: none; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .suggest-toggle { font-size: 13px; color: var(--muted); cursor: pointer; margin-bottom: 10px; display: inline-flex; align-items: center; gap: 4px; }
+  .suggests { display: none; flex-direction: column; gap: 6px; margin-bottom: 16px; }
   .suggests.open { display: flex; }
-  .suggest-pill {
-    background: var(--surface2); border-radius: 8px; padding: 8px 12px;
-    font-size: 13px; cursor: pointer; transition: background .15s;
-    display: flex; align-items: center; gap: 8px;
-  }
+  .suggest-pill { background: var(--surface2); border-radius: 8px; padding: 9px 13px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
   .suggest-pill:active { background: #2e2e2e; }
-  .suggest-pill .sp-icon { font-size: 15px; }
 
-  /* Log section */
-  .log-section { margin-top: 4px; }
   .log-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-  .log-title { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
-  .log-add-btn {
-    background: var(--surface2); border: none; color: var(--text);
-    font-size: 13px; padding: 6px 14px; border-radius: 20px; cursor: pointer;
-    font-weight: 600; letter-spacing: .02em;
-  }
-  .log-entries { display: flex; flex-direction: column; gap: 6px; }
-  .log-entry {
-    background: var(--surface); border-radius: 10px; padding: 10px 12px;
-    display: flex; align-items: center; gap: 10px;
-  }
-  .le-avatar {
-    width: 28px; height: 28px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 700; flex-shrink: 0;
-  }
-  .le-p0 { background: #7c3aed; color: #fff; }
-  .le-p1 { background: #0ea5e9; color: #fff; }
-  .le-drink { flex: 1; font-size: 13px; line-height: 1.3; }
-  .le-rating { font-size: 18px; }
-  .le-del { background: none; border: none; color: #333; font-size: 16px; cursor: pointer; padding: 0 4px; }
-  .empty-log { font-size: 13px; color: #333; padding: 8px 0; }
+  .log-title  { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .log-add-btn { background: var(--surface2); border: none; color: var(--text); font-size: 13px; padding: 7px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; font-family: inherit; }
+  .log-entries { display: flex; flex-direction: column; gap: 7px; }
+  .log-entry { background: var(--surface); border-radius: 10px; padding: 11px 13px; display: flex; align-items: center; gap: 10px; }
+  .le-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .le-drink  { flex: 1; }
+  .le-drink-name { font-size: 14px; font-weight: 600; }
+  .le-drink-who  { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .le-rating { font-size: 20px; }
+  .le-del    { background: none; border: none; color: #2a2a2a; font-size: 18px; cursor: pointer; padding: 0 2px; }
+  .empty-log { font-size: 14px; color: #2a2a2a; padding: 4px 0 8px; }
 
-  /* Bottom sheet overlay */
-  #sheet-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,.6);
-    z-index: 100; display: none; align-items: flex-end;
-  }
-  #sheet-overlay.open { display: flex; }
-  #sheet {
-    background: #181818; border-radius: 20px 20px 0 0;
-    padding: 24px 20px 36px;
-    width: 100%; max-width: 600px; margin: 0 auto;
-    transform: translateY(100%); transition: transform .3s cubic-bezier(.4,0,.2,1);
-  }
-  #sheet-overlay.open #sheet { transform: translateY(0); }
-  .sheet-handle { width: 40px; height: 4px; background: #333; border-radius: 2px; margin: 0 auto 20px; }
-  .sheet-title { font-size: 16px; font-weight: 700; margin-bottom: 18px; }
+  /* Scorecard view */
+  .score-stats { display: flex; gap: 10px; margin-bottom: 20px; }
+  .stat-card { flex: 1; background: var(--surface); border-radius: 12px; padding: 16px; }
+  .stat-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+  .stat-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .stat-counts { font-size: 13px; color: var(--muted); }
+  .score-shop { margin-bottom: 20px; }
+  .score-shop-name { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: #333; margin-bottom: 8px; }
+  .score-entry { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface); border-radius: 10px; margin-bottom: 6px; }
+  .score-empty { font-size: 14px; color: #222; padding: 4px 0; }
+  .generate-btn { width: 100%; padding: 15px; background: #fff; color: #000; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 12px; }
+  .clear-btn { width: 100%; padding: 12px; background: none; color: #333; border: 1px solid #222; border-radius: 10px; font-size: 13px; cursor: pointer; font-family: inherit; }
 
-  /* Person toggle */
-  .person-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
-  .ptog {
-    flex: 1; padding: 10px; border-radius: 10px; border: 2px solid var(--border);
-    background: none; color: var(--muted); font-size: 14px; font-weight: 600;
-    cursor: pointer; transition: all .15s; display: flex; align-items: center;
-    justify-content: center; gap: 6px;
-  }
+  /* ── Log Sheet ── */
+  .sheet-title { font-size: 18px; font-weight: 700; padding: 4px 20px 16px; }
+  .person-toggle { display: flex; gap: 8px; padding: 0 20px 16px; }
+  .ptog { flex: 1; padding: 10px; border-radius: 10px; border: 2px solid var(--border); background: none; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; }
   .ptog.active { border-color: var(--accent); color: var(--accent); background: rgba(255,255,255,.05); }
-
-  /* Drink input */
-  .drink-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; font-weight: 600; }
-  .drink-input {
-    width: 100%; background: var(--surface2); border: 1px solid var(--border);
-    color: var(--text); font-size: 15px; padding: 12px 14px;
-    border-radius: 10px; outline: none; margin-bottom: 16px;
-    font-family: inherit;
-  }
+  .sheet-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 0 20px 8px; }
+  .drink-input { width: calc(100% - 40px); margin: 0 20px 12px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: 15px; padding: 13px 14px; border-radius: 10px; outline: none; font-family: inherit; display: block; }
   .drink-input:focus { border-color: #444; }
-  .quick-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
-  .qpill {
-    background: var(--surface2); border: none; color: #888;
-    font-size: 12px; padding: 5px 10px; border-radius: 20px;
-    cursor: pointer; font-family: inherit;
-  }
-  .qpill:active { background: #2e2e2e; color: var(--text); }
-
-  /* Rating buttons */
-  .rating-row { display: flex; gap: 10px; margin-bottom: 20px; }
-  .rat-btn {
-    flex: 1; padding: 14px; border-radius: 12px; border: 2px solid var(--border);
-    background: none; font-size: 22px; cursor: pointer; transition: all .15s;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    color: var(--muted);
-  }
+  .quick-pills { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 20px 16px; }
+  .qpill { background: var(--surface2); border: none; color: #888; font-size: 12px; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-family: inherit; }
+  .rating-row { display: flex; gap: 10px; padding: 0 20px 16px; }
+  .rat-btn { flex: 1; padding: 14px; border-radius: 12px; border: 2px solid var(--border); background: none; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-family: inherit; }
   .rat-btn span { font-size: 13px; font-weight: 600; }
   .rat-btn.good-sel { border-color: var(--good); color: var(--good); background: rgba(34,197,94,.08); }
   .rat-btn.bad-sel  { border-color: var(--bad);  color: var(--bad);  background: rgba(239,68,68,.08); }
-
-  .save-btn {
-    width: 100%; padding: 15px; background: var(--accent); color: #000;
-    border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
-    cursor: pointer; font-family: inherit;
-  }
+  .save-btn { width: calc(100% - 40px); margin: 0 20px 36px; padding: 15px; background: var(--accent); color: #000; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; display: block; }
   .save-btn:disabled { opacity: .3; }
 
-  /* Cover slide */
-  .cover-center { min-height: 60vh; display: flex; flex-direction: column; justify-content: center; }
-
-  /* Name setup */
-  .name-setup { margin-top: 32px; }
-  .name-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .name-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
-  .name-input {
-    flex: 1; background: var(--surface2); border: 1px solid var(--border);
-    color: var(--text); font-size: 14px; padding: 10px 12px;
-    border-radius: 10px; outline: none; font-family: inherit;
+  /* ── Card Modal ── */
+  #card-modal {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.85);
+    display: none; flex-direction: column; align-items: center;
+    overflow-y: auto; padding: 20px 16px 48px;
   }
+  #card-modal.open { display: flex; }
+  .modal-inner { width: 100%; max-width: 520px; }
+  .modal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .modal-title { font-size: 15px; font-weight: 700; }
+  .modal-close { background: none; border: none; color: #666; font-size: 24px; cursor: pointer; line-height: 1; }
+  #score-canvas { width: 100%; border-radius: 14px; display: block; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .m-share { flex: 1; background: #fff; color: #000; border: none; padding: 14px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .m-copy  { flex: 1; background: #1a1a1a; color: #fff; border: none; padding: 14px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .m-save  { background: #1a1a1a; color: #fff; border: none; padding: 14px 16px; border-radius: 10px; font-size: 18px; cursor: pointer; font-family: inherit; }
 
-  /* Scorecard */
-  .score-shop { margin-bottom: 20px; }
-  .score-shop-name { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 11px; }
-  .score-entry { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface); border-radius: 10px; margin-bottom: 6px; }
-  .score-empty { font-size: 13px; color: #2a2a2a; padding: 6px 0; }
-
-  /* divider */
-  .divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
-
-  @media (min-height: 750px) { .slide { padding-top: 36px; } }
+  hr.div { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 </style>
 </head>
 <body>
 
-<div id="progress"><div id="progress-fill"></div></div>
+<div id="app">
 
-<div id="deck">
-
-  <!-- 0: Cover & Setup -->
-  <div class="slide active" id="slide-0">
-    <div class="slide-inner">
-      <div class="cover-center">
-        <div class="kicker">The Woodlands, TX</div>
-        <h1>Coffee Tour ☕</h1>
-        <p class="sub">Log what you tried. Rate it. Keep score.</p>
-        <div class="name-setup">
-          <div class="name-row">
-            <div class="name-avatar le-p0" id="av0">C</div>
-            <input class="name-input" id="name0" placeholder="Person 1 name" value="Chelsea" oninput="savePeople()">
-          </div>
-          <div class="name-row">
-            <div class="name-avatar le-p1" id="av1">S</div>
-            <input class="name-input" id="name1" placeholder="Person 2 name" value="Sister" oninput="savePeople()">
-          </div>
-        </div>
-      </div>
+  <!-- Header -->
+  <div id="header">
+    <div>
+      <div id="header-kicker">The Woodlands, TX</div>
+      <div id="header-title">Coffee Tour</div>
     </div>
+    <div style="font-size:24px;cursor:pointer" onclick="openDrawer()">☰</div>
   </div>
 
-  <!-- 1: Conduit Coffee -->
-  <div class="slide" id="slide-1">
-    <div class="slide-inner">
-      <div class="kicker">Stop 1 of 6 · Panther Creek</div>
-      <h2>Conduit Coffee ☕</h2>
-      <div class="hours">
+  <!-- Content -->
+  <div id="content">
+
+    <!-- Setup -->
+    <div class="view active" id="view-setup">
+      <div class="setup-hero">
+        <div class="big">☕</div>
+        <h1>Coffee Tour</h1>
+        <p>Log what you tried. Rate it. Share the results.</p>
+      </div>
+      <div class="section-label">Who's on the tour?</div>
+      <div class="name-row">
+        <div class="name-avatar av0" id="av0">C</div>
+        <input class="name-input" id="name0" placeholder="Person 1" value="Chelsea" oninput="savePeople()">
+      </div>
+      <div class="name-row">
+        <div class="name-avatar av1" id="av1">S</div>
+        <input class="name-input" id="name1" placeholder="Person 2" value="Sister" oninput="savePeople()">
+      </div>
+      <hr class="div">
+      <div class="section-label">6 stops on the list</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${Object.entries({
+          conduit:'Conduit Coffee', thirdgen:'Third Gen Coffee', omecalli:'Ome Calli Café',
+          serenity:'Serenity Sips', bluedoor:'Blue Door Coffee', bluestone:'Bluestone Lane'
+        }).map(([id,name],i)=>`
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border-radius:10px;cursor:pointer" onclick="navTo('${id}')">
+            <span style="color:var(--muted);font-size:13px;width:20px">${i+1}</span>
+            <span style="font-size:15px;font-weight:600;flex:1">${name}</span>
+            <span style="color:#2a2a2a">→</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Conduit -->
+    <div class="view" id="view-conduit">
+      <div class="shop-kicker">Stop 1 of 6 · Panther Creek</div>
+      <hr class="div" style="margin-top:0;margin-bottom:16px">
+      <div class="hours-block">
         <div class="hour-row"><span class="hday">Fri</span><span>7:30am – 3pm</span></div>
         <div class="hour-row"><span class="hday">Sat</span><span>7:30am – 3pm</span></div>
         <div class="hour-row"><span class="hday">Sun</span><span>7:30am – 3pm</span></div>
       </div>
-      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Show signature drinks</span>
+      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Signature drinks</span>
       <div class="suggests">
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⭐</span>Miso Caramel Latte</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🍫</span>Sea Salt Cacao</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🥃</span>Call Me Old Fashioned</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🌿</span>Mint Royale</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">💜</span>Lavender Latte</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🍯</span>Local Honey Latte</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🧊</span>Cold Brew</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'conduit')">⭐ Miso Caramel Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'conduit')">🍫 Sea Salt Cacao</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'conduit')">🥃 Call Me Old Fashioned</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'conduit')">🌿 Mint Royale</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'conduit')">💜 Lavender Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'conduit')">🍯 Local Honey Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'conduit')">🧊 Cold Brew</div>
       </div>
-      <div class="log-section">
-        <div class="log-header">
-          <span class="log-title">Logged</span>
-          <button class="log-add-btn" onclick="openSheet('conduit')">+ Log a drink</button>
-        </div>
-        <div class="log-entries" id="log-conduit"></div>
-      </div>
+      <div class="log-header"><span class="log-title">Logged</span><button class="log-add-btn" onclick="openSheet('conduit')">+ Log a drink</button></div>
+      <div class="log-entries" id="log-conduit"></div>
     </div>
-  </div>
 
-  <!-- 2: Third Gen -->
-  <div class="slide" id="slide-2">
-    <div class="slide-inner">
-      <div class="kicker">Stop 2 of 6 · Grogan's Park</div>
-      <h2>Third Gen Coffee</h2>
-      <div class="hours">
+    <!-- Third Gen -->
+    <div class="view" id="view-thirdgen">
+      <div class="shop-kicker">Stop 2 of 6 · Grogan's Park</div>
+      <hr class="div" style="margin-top:0;margin-bottom:16px">
+      <div class="hours-block">
         <div class="hour-row"><span class="hday">Fri</span><span>7am – 5pm</span></div>
         <div class="hour-row"><span class="hday">Sat</span><span>7am – 5pm</span></div>
         <div class="hour-row"><span class="hday">Sun</span><span>8am – 3pm</span></div>
       </div>
-      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Show signature drinks</span>
+      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Signature drinks</span>
       <div class="suggests">
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⭐</span>Cane Break (espresso + brown sugar)</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">✨</span>Golden Spice (honey, cinnamon, turmeric)</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🍥</span>Cinnamon Roll</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🧊</span>Frozen Cold Brew</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">💜</span>Lavender Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'thirdgen')">⭐ Cane Break (espresso + brown sugar)</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'thirdgen')">✨ Golden Spice (honey, cinnamon, turmeric)</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'thirdgen')">🍥 Cinnamon Roll</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'thirdgen')">🧊 Frozen Cold Brew</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'thirdgen')">💜 Lavender Latte</div>
       </div>
-      <div class="log-section">
-        <div class="log-header">
-          <span class="log-title">Logged</span>
-          <button class="log-add-btn" onclick="openSheet('thirdgen')">+ Log a drink</button>
-        </div>
-        <div class="log-entries" id="log-thirdgen"></div>
-      </div>
+      <div class="log-header"><span class="log-title">Logged</span><button class="log-add-btn" onclick="openSheet('thirdgen')">+ Log a drink</button></div>
+      <div class="log-entries" id="log-thirdgen"></div>
     </div>
-  </div>
 
-  <!-- 3: Ome Calli -->
-  <div class="slide" id="slide-3">
-    <div class="slide-inner">
-      <div class="kicker">Stop 3 of 6 · Grogan's Mill</div>
-      <h2>Ome Calli Café 🍄</h2>
-      <div class="hours">
+    <!-- Ome Calli -->
+    <div class="view" id="view-omecalli">
+      <div class="shop-kicker">Stop 3 of 6 · Grogan's Mill</div>
+      <hr class="div" style="margin-top:0;margin-bottom:16px">
+      <div class="hours-block">
         <div class="hour-row"><span class="hday">Fri</span><span>7am – 6pm</span></div>
         <div class="hour-row"><span class="hday">Sat</span><span>7am – 6pm</span></div>
         <div class="hour-row"><span class="hday">Sun</span><span>8am – 4pm</span></div>
       </div>
-      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Show signature drinks</span>
+      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Signature drinks</span>
       <div class="suggests">
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⭐</span>The Alchemist (cacao, reishi, espresso)</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🍁</span>The Salted Maple</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🍄</span>Mushroom Coffee</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🌱</span>Organic Iced Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'omecalli')">⭐ The Alchemist (cacao, reishi, espresso)</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'omecalli')">🍁 The Salted Maple</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'omecalli')">🍄 Mushroom Coffee</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'omecalli')">🌱 Organic Iced Latte</div>
       </div>
-      <div class="log-section">
-        <div class="log-header">
-          <span class="log-title">Logged</span>
-          <button class="log-add-btn" onclick="openSheet('omecalli')">+ Log a drink</button>
-        </div>
-        <div class="log-entries" id="log-omecalli"></div>
-      </div>
+      <div class="log-header"><span class="log-title">Logged</span><button class="log-add-btn" onclick="openSheet('omecalli')">+ Log a drink</button></div>
+      <div class="log-entries" id="log-omecalli"></div>
     </div>
-  </div>
 
-  <!-- 4: Serenity Sips -->
-  <div class="slide" id="slide-4">
-    <div class="slide-inner">
-      <div class="kicker">Stop 4 of 6 · Shenandoah</div>
-      <h2>Serenity Sips 🌿</h2>
-      <div class="hours">
+    <!-- Serenity Sips -->
+    <div class="view" id="view-serenity">
+      <div class="shop-kicker">Stop 4 of 6 · Shenandoah</div>
+      <hr class="div" style="margin-top:0;margin-bottom:16px">
+      <div class="hours-block">
         <div class="hour-row"><span class="hday">Fri</span><span>9am – 7pm</span></div>
         <div class="hour-row"><span class="hday">Sat</span><span>9am – 3pm</span></div>
-        <div class="hour-row"><span class="hday">Sun</span><span class="hclosed">Closed</span></div>
+        <div class="hour-row"><span class="hday">Sun</span><span class="hclosed">Closed ✗</span></div>
       </div>
-      <p style="font-size:12px;color:#444;margin-bottom:12px;">⚠️ Closed Sundays — wellness & matcha forward</p>
-      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Show signature drinks</span>
+      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Signature drinks</span>
       <div class="suggests">
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⭐</span>Matcha Fog (lavender + vanilla)</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🍋</span>Lifted Lemonade</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⚡</span>Magic Magnesium Lemonade</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">💜</span>Iced Lavender Matcha</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">❤️</span>Beetroot Cacao Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'serenity')">⭐ Matcha Fog (lavender + vanilla)</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'serenity')">🍋 Lifted Lemonade</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'serenity')">⚡ Magic Magnesium Lemonade</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'serenity')">💜 Iced Lavender Matcha</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'serenity')">❤️ Beetroot Cacao Latte</div>
       </div>
-      <div class="log-section">
-        <div class="log-header">
-          <span class="log-title">Logged</span>
-          <button class="log-add-btn" onclick="openSheet('serenity')">+ Log a drink</button>
-        </div>
-        <div class="log-entries" id="log-serenity"></div>
-      </div>
+      <div class="log-header"><span class="log-title">Logged</span><button class="log-add-btn" onclick="openSheet('serenity')">+ Log a drink</button></div>
+      <div class="log-entries" id="log-serenity"></div>
     </div>
-  </div>
 
-  <!-- 5: Blue Door -->
-  <div class="slide" id="slide-5">
-    <div class="slide-inner">
-      <div class="kicker">Stop 5 of 6 · The Waterway</div>
-      <h2>Blue Door Coffee 🚪</h2>
-      <div class="hours">
+    <!-- Blue Door -->
+    <div class="view" id="view-bluedoor">
+      <div class="shop-kicker">Stop 5 of 6 · The Waterway</div>
+      <hr class="div" style="margin-top:0;margin-bottom:16px">
+      <div class="hours-block">
         <div class="hour-row"><span class="hday">Fri</span><span>7am – 5pm</span></div>
         <div class="hour-row"><span class="hday">Sat</span><span>7am – 5pm</span></div>
         <div class="hour-row"><span class="hday">Sun</span><span>8am – 5pm</span></div>
       </div>
-      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Show signature drinks</span>
+      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Signature drinks</span>
       <div class="suggests">
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⭐</span>Honey Cinnamon Latte</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🧊</span>Iced Latte</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🌿</span>Seasonal Special</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'bluedoor')">⭐ Honey Cinnamon Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'bluedoor')">🧊 Iced Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'bluedoor')">🌿 Seasonal Special</div>
       </div>
-      <div class="log-section">
-        <div class="log-header">
-          <span class="log-title">Logged</span>
-          <button class="log-add-btn" onclick="openSheet('bluedoor')">+ Log a drink</button>
-        </div>
-        <div class="log-entries" id="log-bluedoor"></div>
-      </div>
+      <div class="log-header"><span class="log-title">Logged</span><button class="log-add-btn" onclick="openSheet('bluedoor')">+ Log a drink</button></div>
+      <div class="log-entries" id="log-bluedoor"></div>
     </div>
-  </div>
 
-  <!-- 6: Bluestone Lane -->
-  <div class="slide" id="slide-6">
-    <div class="slide-inner">
-      <div class="kicker">Stop 6 of 6 · Lake Woodlands Dr</div>
-      <h2>Bluestone Lane 🇦🇺</h2>
-      <div class="hours">
+    <!-- Bluestone Lane -->
+    <div class="view" id="view-bluestone">
+      <div class="shop-kicker">Stop 6 of 6 · Lake Woodlands Dr</div>
+      <hr class="div" style="margin-top:0;margin-bottom:16px">
+      <div class="hours-block">
         <div class="hour-row"><span class="hday">Fri</span><span>7:30am – 5pm</span></div>
         <div class="hour-row"><span class="hday">Sat</span><span>7:30am – 5pm</span></div>
         <div class="hour-row"><span class="hday">Sun</span><span>7:30am – 5pm</span></div>
       </div>
-      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Show signature drinks</span>
+      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Signature drinks</span>
       <div class="suggests">
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⭐</span>Iced Flat White</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🥤</span>Cold-Pressed Juice</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🌿</span>Wellness Drink</div>
-        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🧊</span>Iced Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'bluestone')">⭐ Iced Flat White</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'bluestone')">🥤 Cold-Pressed Juice</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'bluestone')">🌿 Wellness Drink</div>
+        <div class="suggest-pill" onclick="fillDrink(this,'bluestone')">🧊 Iced Latte</div>
       </div>
-      <div class="log-section">
-        <div class="log-header">
-          <span class="log-title">Logged</span>
-          <button class="log-add-btn" onclick="openSheet('bluestone')">+ Log a drink</button>
-        </div>
-        <div class="log-entries" id="log-bluestone"></div>
-      </div>
+      <div class="log-header"><span class="log-title">Logged</span><button class="log-add-btn" onclick="openSheet('bluestone')">+ Log a drink</button></div>
+      <div class="log-entries" id="log-bluestone"></div>
     </div>
+
+    <!-- Scorecard -->
+    <div class="view" id="view-score">
+      <div class="score-stats" id="score-stats"></div>
+      <div id="score-shops"></div>
+      <button class="generate-btn" onclick="generateCard()">Generate Scorecard ✦</button>
+      <button class="clear-btn" onclick="clearAll()">Clear all logs</button>
+    </div>
+
   </div>
 
-  <!-- 7: Scorecard -->
-  <div class="slide" id="slide-7">
-    <div class="slide-inner">
-      <div class="kicker">The Verdict</div>
-      <h2>Scorecard 🏆</h2>
-      <div id="scorecard"></div>
-      <div style="display:flex;gap:10px;margin-top:24px">
-        <button onclick="generateCard()" id="export-btn" style="flex:1;background:var(--accent);border:none;color:#000;padding:14px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Generate Scorecard ✦</button>
-        <button onclick="clearAll()" style="background:none;border:1px solid #222;color:#333;padding:14px 16px;border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;">Clear</button>
-      </div>
-    </div>
+  <!-- Bottom bar -->
+  <div id="bar">
+    <button class="bar-btn active" id="bar-home" onclick="navTo('setup')">
+      <span class="bico">🏠</span>Home
+    </button>
+    <button class="bar-btn" id="bar-shops" onclick="openDrawer()">
+      <span class="bico">☕</span>Shops
+    </button>
+    <button class="bar-btn" id="bar-score" onclick="navTo('score')">
+      <span class="bico">🏆</span>Scorecard
+    </button>
   </div>
 
 </div>
 
-<!-- Nav -->
-<nav id="nav">
-  <button class="nbtn" id="btn-prev" onclick="go(-1)">←</button>
-  <span id="counter">1 / 8</span>
-  <button class="nbtn" id="btn-next" onclick="go(1)">→</button>
-</nav>
-
-<!-- Card Preview Modal -->
-<div id="card-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;padding:20px 16px 40px;">
-  <div style="width:100%;max-width:520px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <span style="font-size:14px;font-weight:700;color:#fff">Scorecard</span>
-      <button onclick="closeCard()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1">×</button>
-    </div>
-    <canvas id="score-canvas" style="width:100%;border-radius:16px;display:block;"></canvas>
-    <div style="display:flex;gap:10px;margin-top:16px">
-      <button id="share-img-btn" onclick="shareImage()" style="flex:1;background:#fff;color:#000;border:none;padding:14px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">⬆️ Share</button>
-      <button id="copy-img-btn" onclick="copyImage()" style="flex:1;background:#1a1a1a;color:#fff;border:none;padding:14px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">⎘ Copy</button>
-      <button id="save-img-btn" onclick="saveImage()" style="background:#1a1a1a;color:#fff;border:none;padding:14px 16px;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit;">↓</button>
-    </div>
+<!-- Drawer overlay -->
+<div class="overlay" id="drawer-overlay" onclick="closeDrawer(event)">
+  <div class="sheet" id="drawer-sheet">
+    <div class="sheet-handle"></div>
+    <div id="drawer-list"></div>
   </div>
 </div>
 
-<!-- Bottom Sheet -->
-<div id="sheet-overlay" onclick="closeSheet(event)">
-  <div id="sheet">
+<!-- Log Sheet overlay -->
+<div class="overlay" id="log-overlay" onclick="closeSheet(event)">
+  <div class="sheet" id="log-sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-title" id="sheet-title">Log a drink</div>
-
     <div class="person-toggle">
-      <button class="ptog active" id="ptog0" onclick="selectPerson(0)">
-        <span id="ptog0-label">Chelsea</span>
-      </button>
-      <button class="ptog" id="ptog1" onclick="selectPerson(1)">
-        <span id="ptog1-label">Sister</span>
-      </button>
+      <button class="ptog active" id="ptog0" onclick="selectPerson(0)"><span id="ptog0-l">Chelsea</span></button>
+      <button class="ptog"        id="ptog1" onclick="selectPerson(1)"><span id="ptog1-l">Sister</span></button>
     </div>
-
-    <div class="drink-label">What did you get?</div>
+    <div class="sheet-label">What did you get?</div>
     <input class="drink-input" id="drink-input" placeholder="Drink name…" oninput="checkSave()">
     <div class="quick-pills" id="quick-pills"></div>
-
-    <div class="drink-label">How was it?</div>
+    <div class="sheet-label">How was it?</div>
     <div class="rating-row">
       <button class="rat-btn" id="rat-good" onclick="selectRating('good')">👍 <span>Good</span></button>
       <button class="rat-btn" id="rat-bad"  onclick="selectRating('bad')">👎 <span>Bad</span></button>
     </div>
-
     <button class="save-btn" id="save-btn" onclick="saveLog()" disabled>Save</button>
   </div>
 </div>
 
+<!-- Card Modal -->
+<div id="card-modal">
+  <div class="modal-inner">
+    <div class="modal-top">
+      <span class="modal-title">Scorecard</span>
+      <button class="modal-close" onclick="closeCard()">×</button>
+    </div>
+    <canvas id="score-canvas"></canvas>
+    <div class="modal-actions">
+      <button class="m-share" onclick="shareImage()">⬆️ Share</button>
+      <button class="m-copy"  id="copy-btn" onclick="copyImage()">⎘ Copy</button>
+      <button class="m-save"  onclick="saveImage()">↓</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  #card-modal { position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.88);display:none;flex-direction:column;align-items:center;overflow-y:auto;padding:20px 16px 48px; }
+  #card-modal.open { display:flex; }
+</style>
+
 <script>
 const SHOPS = {
-  conduit:  { name: 'Conduit Coffee',   suggests: ['Miso Caramel Latte','Sea Salt Cacao','Call Me Old Fashioned','Mint Royale','Lavender Latte','Cold Brew'] },
-  thirdgen: { name: 'Third Gen Coffee', suggests: ['Cane Break','Golden Spice','Cinnamon Roll','Frozen Cold Brew','Lavender Latte'] },
-  omecalli: { name: 'Ome Calli Café',   suggests: ['The Alchemist','The Salted Maple','Mushroom Coffee','Organic Iced Latte'] },
-  serenity: { name: 'Serenity Sips',    suggests: ['Matcha Fog','Lifted Lemonade','Magic Magnesium','Iced Lavender Matcha','Beetroot Cacao Latte'] },
-  bluedoor: { name: 'Blue Door Coffee', suggests: ['Honey Cinnamon Latte','Iced Latte','Seasonal Special'] },
-  bluestone:{ name: 'Bluestone Lane',   suggests: ['Iced Flat White','Cold-Pressed Juice','Wellness Drink','Iced Latte'] },
+  conduit:   { name:'Conduit Coffee',   icon:'☕', stop:1, suggests:['Miso Caramel Latte','Sea Salt Cacao','Call Me Old Fashioned','Mint Royale','Lavender Latte','Cold Brew'] },
+  thirdgen:  { name:'Third Gen Coffee', icon:'🌱', stop:2, suggests:['Cane Break','Golden Spice','Cinnamon Roll','Frozen Cold Brew','Lavender Latte'] },
+  omecalli:  { name:'Ome Calli Café',   icon:'🍄', stop:3, suggests:['The Alchemist','The Salted Maple','Mushroom Coffee','Organic Iced Latte'] },
+  serenity:  { name:'Serenity Sips',    icon:'🌿', stop:4, suggests:['Matcha Fog','Lifted Lemonade','Magic Magnesium','Iced Lavender Matcha','Beetroot Cacao Latte'] },
+  bluedoor:  { name:'Blue Door Coffee', icon:'🚪', stop:5, suggests:['Honey Cinnamon Latte','Iced Latte','Seasonal Special'] },
+  bluestone: { name:'Bluestone Lane',   icon:'🇦🇺', stop:6, suggests:['Iced Flat White','Cold-Pressed Juice','Wellness Drink','Iced Latte'] },
 };
-const SLIDES = 8;
-let cur = 0, startX = 0;
+
+const HEADERS = {
+  setup:     { kicker:'The Woodlands, TX', title:'Coffee Tour ☕' },
+  conduit:   { kicker:'Stop 1 of 6',       title:'Conduit Coffee' },
+  thirdgen:  { kicker:'Stop 2 of 6',       title:'Third Gen Coffee' },
+  omecalli:  { kicker:'Stop 3 of 6',       title:'Ome Calli Café' },
+  serenity:  { kicker:'Stop 4 of 6',       title:'Serenity Sips' },
+  bluedoor:  { kicker:'Stop 5 of 6',       title:'Blue Door Coffee' },
+  bluestone: { kicker:'Stop 6 of 6',       title:'Bluestone Lane' },
+  score:     { kicker:'The Verdict',        title:'Scorecard 🏆' },
+};
+
+let curView = 'setup';
 let sheetShop = null, sheetPerson = 0, sheetRating = null;
 
-// ---- Data ----
-function getData() {
-  try { return JSON.parse(localStorage.getItem('wc-tour') || '{}'); } catch { return {}; }
-}
-function saveData(d) { localStorage.setItem('wc-tour', JSON.stringify(d)); }
-
-function getPeople() {
-  const d = getData();
-  return [d.p0 || 'Chelsea', d.p1 || 'Sister'];
-}
+// ── Data ──
+function getData()     { try { return JSON.parse(localStorage.getItem('wc-tour2')||'{}'); } catch { return {}; } }
+function saveData(d)   { localStorage.setItem('wc-tour2', JSON.stringify(d)); }
+function getPeople()   { const d=getData(); return [d.p0||'Chelsea', d.p1||'Sister']; }
+function getLogs(shop) { return (getData().logs||{})[shop]||[]; }
 
 function savePeople() {
   const d = getData();
-  d.p0 = document.getElementById('name0').value || 'Chelsea';
-  d.p1 = document.getElementById('name1').value || 'Sister';
+  d.p0 = document.getElementById('name0').value||'Chelsea';
+  d.p1 = document.getElementById('name1').value||'Sister';
   document.getElementById('av0').textContent = d.p0[0].toUpperCase();
   document.getElementById('av1').textContent = d.p1[0].toUpperCase();
   saveData(d);
   renderAll();
 }
 
-// ---- Render logs ----
-function renderShop(shopId) {
+// ── Navigation ──
+function navTo(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.getElementById('content').scrollTop = 0;
+  curView = view;
+
+  // Header
+  const h = HEADERS[view] || { kicker:'', title:'' };
+  document.getElementById('header-kicker').textContent = h.kicker;
+  document.getElementById('header-title').textContent  = h.title;
+
+  // Bar active states
+  document.getElementById('bar-home').classList.toggle('active', view === 'setup');
+  document.getElementById('bar-score').classList.toggle('active', view === 'score');
+  document.getElementById('bar-shops').classList.toggle('active', Object.keys(SHOPS).includes(view));
+
+  if (view === 'score') renderScorecard();
+  closeDrawer();
+}
+
+// ── Drawer ──
+function openDrawer() {
   const d = getData();
-  const logs = (d.logs || {})[shopId] || [];
+  const logs = d.logs || {};
+  const people = getPeople();
+  let html = '';
+
+  html += `<div class="drawer-section">Stops</div>`;
+  Object.entries(SHOPS).forEach(([id, shop]) => {
+    const count = (logs[id]||[]).length;
+    const badge = count > 0
+      ? `<span class="drawer-badge has">${count} logged</span>`
+      : `<span class="drawer-badge">not visited</span>`;
+    html += `<div class="drawer-item" onclick="navTo('${id}')">
+      <span class="drawer-icon">${shop.icon}</span>
+      <span class="drawer-name">${shop.name}</span>
+      ${badge}
+    </div>`;
+  });
+
+  html += `<div class="drawer-section" style="margin-top:16px">Other</div>`;
+  html += `<div class="drawer-item" onclick="navTo('setup')"><span class="drawer-icon">⚙️</span><span class="drawer-name">Setup & Names</span></div>`;
+  html += `<div class="drawer-item" onclick="navTo('score')"><span class="drawer-icon">🏆</span><span class="drawer-name">Scorecard</span></div>`;
+
+  document.getElementById('drawer-list').innerHTML = html;
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+
+function closeDrawer(e) {
+  if (e && e.target !== document.getElementById('drawer-overlay')) return;
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+// ── Render logs ──
+function renderShop(shopId) {
+  const logs = getLogs(shopId);
   const people = getPeople();
   const el = document.getElementById('log-' + shopId);
   if (!el) return;
-  if (logs.length === 0) {
-    el.innerHTML = '<div class="empty-log">Nothing logged yet.</div>';
-    return;
-  }
-  el.innerHTML = logs.map((entry, i) => `
+  if (!logs.length) { el.innerHTML = '<div class="empty-log">Nothing logged yet.</div>'; return; }
+  el.innerHTML = logs.map((e, i) => `
     <div class="log-entry">
-      <div class="le-avatar le-p${entry.person}"><b>${people[entry.person][0].toUpperCase()}</b></div>
+      <div class="le-avatar ${e.person===0?'av0':'av1'}">${people[e.person][0].toUpperCase()}</div>
       <div class="le-drink">
-        <div style="font-size:13px;font-weight:600">${entry.drink}</div>
-        <div style="font-size:11px;color:var(--muted)">${people[entry.person]}</div>
+        <div class="le-drink-name">${e.drink}</div>
+        <div class="le-drink-who">${people[e.person]}</div>
       </div>
-      <span class="le-rating">${entry.rating === 'good' ? '👍' : '👎'}</span>
-      <button class="le-del" onclick="deleteLog('${shopId}', ${i})">×</button>
-    </div>
-  `).join('');
-}
-
-function renderAll() {
-  Object.keys(SHOPS).forEach(renderShop);
-  renderScorecard();
-  // Update person toggle labels
-  const people = getPeople();
-  document.getElementById('ptog0-label').textContent = people[0];
-  document.getElementById('ptog1-label').textContent = people[1];
+      <span class="le-rating">${e.rating==='good'?'👍':'👎'}</span>
+      <button class="le-del" onclick="deleteLog('${shopId}',${i})">×</button>
+    </div>`).join('');
 }
 
 function renderScorecard() {
   const d = getData();
   const logs = d.logs || {};
   const people = getPeople();
-  let html = '';
+  const pGood=[0,0], pBad=[0,0];
+  Object.values(logs).forEach(s => s.forEach(e => { e.rating==='good' ? pGood[e.person]++ : pBad[e.person]++; }));
 
-  Object.entries(SHOPS).forEach(([id, shop]) => {
-    const entries = logs[id] || [];
-    html += `<div class="score-shop"><div class="score-shop-name">${shop.name}</div>`;
-    if (entries.length === 0) {
-      html += `<div class="score-empty">Not visited yet</div>`;
-    } else {
-      entries.forEach(e => {
-        html += `
-          <div class="score-entry">
-            <div class="le-avatar le-p${e.person}" style="width:26px;height:26px;font-size:11px">${people[e.person][0].toUpperCase()}</div>
-            <div style="flex:1;font-size:13px">${e.drink}</div>
-            <span style="font-size:18px">${e.rating === 'good' ? '👍' : '👎'}</span>
-          </div>`;
-      });
-    }
+  // Stats
+  document.getElementById('score-stats').innerHTML = [0,1].map(pi => `
+    <div class="stat-card">
+      <div class="stat-avatar ${pi===0?'av0':'av1'}">${people[pi][0].toUpperCase()}</div>
+      <div class="stat-name">${people[pi]}</div>
+      <div class="stat-counts">👍 ${pGood[pi]} &nbsp;·&nbsp; 👎 ${pBad[pi]}</div>
+    </div>`).join('');
+
+  // Per-shop
+  let html = '';
+  const visited = Object.entries(SHOPS).filter(([id]) => (logs[id]||[]).length);
+  if (!visited.length) { document.getElementById('score-shops').innerHTML = '<p style="color:#222;font-size:14px;margin-bottom:16px">No drinks logged yet.</p>'; return; }
+  visited.forEach(([id, shop]) => {
+    html += `<div class="score-shop"><div class="score-shop-name">${shop.icon} ${shop.name}</div>`;
+    (logs[id]||[]).forEach(e => {
+      html += `<div class="score-entry">
+        <div class="le-avatar ${e.person===0?'av0':'av1'}" style="width:26px;height:26px;font-size:11px">${people[e.person][0].toUpperCase()}</div>
+        <div style="flex:1;font-size:14px">${e.drink}</div>
+        <span style="font-size:18px">${e.rating==='good'?'👍':'👎'}</span>
+      </div>`;
+    });
     html += `</div>`;
   });
-
-  // Quick summary
-  let totalGood = 0, totalBad = 0;
-  const pGood = [0, 0], pBad = [0, 0];
-  Object.values(logs).forEach(shop => shop.forEach(e => {
-    if (e.rating === 'good') { totalGood++; pGood[e.person]++; }
-    else { totalBad++; pBad[e.person]++; }
-  }));
-
-  if (totalGood + totalBad > 0) {
-    html = `<div style="display:flex;gap:10px;margin-bottom:20px">
-      <div style="flex:1;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px;text-align:center">
-        <div style="font-size:26px;font-weight:800;color:var(--good)">${totalGood}</div>
-        <div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Good</div>
-      </div>
-      <div style="flex:1;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px;text-align:center">
-        <div style="font-size:26px;font-weight:800;color:var(--bad)">${totalBad}</div>
-        <div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Bad</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:10px;margin-bottom:20px">
-      ${[0,1].map(p => `
-        <div style="flex:1;background:var(--surface);border-radius:10px;padding:12px">
-          <div class="le-avatar le-p${p}" style="margin-bottom:8px;width:28px;height:28px;font-size:12px">${people[p][0].toUpperCase()}</div>
-          <div style="font-size:13px;font-weight:600;margin-bottom:4px">${people[p]}</div>
-          <div style="font-size:12px;color:var(--muted)">👍 ${pGood[p]} · 👎 ${pBad[p]}</div>
-        </div>`).join('')}
-    </div>` + html;
-  }
-
-  document.getElementById('scorecard').innerHTML = html || '<p style="color:#333;font-size:14px">No drinks logged yet. Start swiping!</p>';
+  document.getElementById('score-shops').innerHTML = html;
 }
 
-// ---- Delete ----
+function renderAll() {
+  Object.keys(SHOPS).forEach(renderShop);
+  if (curView === 'score') renderScorecard();
+  const p = getPeople();
+  document.getElementById('ptog0-l').textContent = p[0];
+  document.getElementById('ptog1-l').textContent = p[1];
+}
+
 function deleteLog(shopId, idx) {
   const d = getData();
-  if (!d.logs) return;
+  if (!d.logs?.[shopId]) return;
   d.logs[shopId].splice(idx, 1);
   saveData(d);
   renderShop(shopId);
-  renderScorecard();
-}
-
-// ---- Canvas Scorecard ----
-const W = 800; // logical canvas width
-const P = { colors: ['#7c3aed','#0ea5e9'] };
-
-function wrapText(ctx, text, x, y, maxW, lineH) {
-  const words = text.split(' ');
-  let line = '', ly = y;
-  for (const word of words) {
-    const test = line ? line + ' ' + word : word;
-    if (ctx.measureText(test).width > maxW && line) {
-      ctx.fillText(line, x, ly);
-      line = word; ly += lineH;
-    } else { line = test; }
-  }
-  ctx.fillText(line, x, ly);
-  return ly + lineH;
-}
-
-function generateCard() {
-  const d = getData();
-  const logs = d.logs || {};
-  const people = getPeople();
-  const date = new Date().toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
-
-  const dpr = Math.min(window.devicePixelRatio || 2, 3);
-  const pad = 52;
-  const innerW = W - pad * 2;
-
-  // --- Measure pass: calc total height ---
-  let height = 0;
-  height += 56;   // top pad
-  height += 44;   // ☕ emoji
-  height += 14;   // gap
-  height += 58;   // title
-  height += 32;   // date
-  height += 48;   // gap + divider
-  height += 100;  // stats row
-  height += 40;   // gap + divider
-
-  const visitedShops = Object.entries(SHOPS).filter(([id]) => (logs[id]||[]).length > 0);
-  const tmpC = document.createElement('canvas');
-  tmpC.width = W; tmpC.height = 100;
-  const tmpCtx = tmpC.getContext('2d');
-  tmpCtx.font = '600 28px -apple-system, BlinkMacSystemFont, sans-serif';
-
-  visitedShops.forEach(([id, shop]) => {
-    height += 20; // shop name
-    height += 16; // gap
-    const entries = logs[id] || [];
-    entries.forEach(e => {
-      const textW = tmpCtx.measureText(e.drink).width;
-      const lines = Math.ceil(textW / (innerW - 120)) || 1;
-      height += Math.max(52, 28 + lines * 30);
-    });
-    height += 24; // bottom gap
-  });
-
-  const allEntries = Object.entries(logs).flatMap(([id, es]) => es.map(e => ({...e, shop: SHOPS[id].name})));
-  const goods = allEntries.filter(e => e.rating === 'good');
-  const bads  = allEntries.filter(e => e.rating === 'bad');
-  if (goods.length || bads.length) { height += 120; }
-  height += 72; // footer
-
-  const canvas = document.getElementById('score-canvas');
-  canvas.width  = W * dpr;
-  canvas.height = height * dpr;
-  canvas.style.height = (height * (canvas.offsetWidth / W)) + 'px';
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-
-  // --- Background ---
-  ctx.fillStyle = '#0c0c0c';
-  ctx.fillRect(0, 0, W, height);
-
-  // Subtle gradient header wash
-  const grad = ctx.createLinearGradient(0, 0, W, 240);
-  grad.addColorStop(0, 'rgba(124,58,237,0.12)');
-  grad.addColorStop(0.5, 'rgba(14,165,233,0.06)');
-  grad.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, 240);
-
-  let y = 56;
-
-  // Emoji
-  ctx.font = '42px serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('☕', W/2, y + 32);
-  y += 44 + 14;
-
-  // Title
-  ctx.font = `800 52px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif`;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText('Coffee Tour', W/2, y + 46);
-  y += 58;
-
-  // Date + location
-  ctx.font = `500 20px -apple-system, BlinkMacSystemFont, sans-serif`;
-  ctx.fillStyle = '#555';
-  ctx.fillText(`The Woodlands, TX  ·  ${date}`, W/2, y + 20);
-  y += 32;
-
-  // Divider
-  y += 28;
-  ctx.strokeStyle = '#222';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
-  y += 20;
-
-  // --- Stats row ---
-  const pGood = [0,0], pBad = [0,0];
-  Object.values(logs).forEach(shop => shop.forEach(e => {
-    if (e.rating === 'good') pGood[e.person]++; else pBad[e.person]++;
-  }));
-
-  [0,1].forEach(pi => {
-    const bx = pad + pi * (innerW / 2 + 16);
-    const bw = innerW / 2 - 8;
-
-    // Card bg
-    ctx.fillStyle = '#161616';
-    roundRect(ctx, bx, y, bw, 86, 12);
-    ctx.fill();
-
-    // Avatar circle
-    ctx.fillStyle = P.colors[pi];
-    ctx.beginPath(); ctx.arc(bx + 28, y + 43, 20, 0, Math.PI*2); ctx.fill();
-    ctx.font = `700 17px -apple-system, sans-serif`;
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'center';
-    ctx.fillText(people[pi][0].toUpperCase(), bx + 28, y + 49);
-
-    // Name
-    ctx.font = `700 20px -apple-system, sans-serif`;
-    ctx.fillStyle = '#eee';
-    ctx.textAlign = 'left';
-    ctx.fillText(people[pi], bx + 58, y + 36);
-
-    // Counts
-    ctx.font = `500 17px -apple-system, sans-serif`;
-    ctx.fillStyle = '#22c55e';
-    ctx.fillText(`👍 ${pGood[pi]}`, bx + 58, y + 62);
-    ctx.fillStyle = '#ef4444';
-    ctx.fillText(`  👎 ${pBad[pi]}`, bx + 108, y + 62);
-  });
-  y += 100;
-
-  // Divider
-  ctx.strokeStyle = '#1e1e1e';
-  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
-  y += 28;
-
-  // --- Shop sections ---
-  ctx.textAlign = 'left';
-  visitedShops.forEach(([id, shop]) => {
-    const entries = logs[id] || [];
-
-    // Shop name
-    ctx.font = `600 13px -apple-system, sans-serif`;
-    ctx.fillStyle = '#444';
-    ctx.letterSpacing = '0.08em';
-    ctx.fillText(shop.name.toUpperCase(), pad, y + 13);
-    ctx.letterSpacing = '0';
-
-    // Thin line after name
-    ctx.strokeStyle = '#1e1e1e';
-    ctx.lineWidth = 1;
-    const nameW = ctx.measureText(shop.name.toUpperCase()).width;
-    ctx.beginPath(); ctx.moveTo(pad + nameW + 12, y + 8); ctx.lineTo(W - pad, y + 8); ctx.stroke();
-    y += 16 + 14;
-
-    entries.forEach(e => {
-      const rowH = 52;
-      // Entry bg
-      ctx.fillStyle = '#141414';
-      roundRect(ctx, pad, y, innerW, rowH, 10);
-      ctx.fill();
-
-      // Avatar
-      ctx.fillStyle = P.colors[e.person];
-      ctx.beginPath(); ctx.arc(pad + 22, y + rowH/2, 14, 0, Math.PI*2); ctx.fill();
-      ctx.font = `700 12px -apple-system, sans-serif`;
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center';
-      ctx.fillText(people[e.person][0].toUpperCase(), pad + 22, y + rowH/2 + 4);
-
-      // Drink name
-      ctx.textAlign = 'left';
-      ctx.font = `600 22px -apple-system, sans-serif`;
-      ctx.fillStyle = '#e8e8e8';
-      const drinkX = pad + 48;
-      const maxDrinkW = innerW - 100;
-
-      // Simple single-line (truncate if too wide)
-      let drinkText = e.drink;
-      while (ctx.measureText(drinkText).width > maxDrinkW && drinkText.length > 4) {
-        drinkText = drinkText.slice(0, -1);
-      }
-      if (drinkText !== e.drink) drinkText = drinkText.trimEnd() + '…';
-      ctx.fillText(drinkText, drinkX, y + rowH/2 + 8);
-
-      // Rating emoji
-      ctx.font = '24px serif';
-      ctx.textAlign = 'right';
-      ctx.fillText(e.rating === 'good' ? '👍' : '👎', W - pad - 4, y + rowH/2 + 9);
-
-      y += rowH + 6;
-    });
-    y += 18;
-  });
-
-  // --- Best / Pass ---
-  if (goods.length || bads.length) {
-    ctx.strokeStyle = '#1e1e1e';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
-    y += 24;
-
-    if (goods.length) {
-      const best = goods[goods.length - 1];
-      ctx.font = `500 18px -apple-system, sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#22c55e';
-      ctx.fillText('⭐ Best: ', pad, y + 18);
-      const bw = ctx.measureText('⭐ Best: ').width;
-      ctx.fillStyle = '#aaa';
-      ctx.fillText(`${best.drink}  ·  ${best.shop}`, pad + bw, y + 18);
-      y += 34;
-    }
-    if (bads.length) {
-      const pass = bads[bads.length - 1];
-      ctx.font = `500 18px -apple-system, sans-serif`;
-      ctx.fillStyle = '#ef4444';
-      ctx.fillText('❌ Pass: ', pad, y + 18);
-      const pw = ctx.measureText('❌ Pass: ').width;
-      ctx.fillStyle = '#aaa';
-      ctx.fillText(`${pass.drink}  ·  ${pass.shop}`, pad + pw, y + 18);
-      y += 34;
-    }
-    y += 16;
-  }
-
-  // --- Footer ---
-  ctx.strokeStyle = '#1a1a1a';
-  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W-pad, y); ctx.stroke();
-  y += 24;
-  ctx.font = `500 16px -apple-system, sans-serif`;
-  ctx.fillStyle = '#2a2a2a';
-  ctx.textAlign = 'center';
-  ctx.fillText('carlobney.github.io/woodlands-coffee-deck/', W/2, y + 16);
-
-  // Show modal
-  document.getElementById('card-modal').style.display = 'flex';
-}
-
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
-  ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
-  ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
-  ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
-  ctx.closePath();
-}
-
-function closeCard() {
-  document.getElementById('card-modal').style.display = 'none';
-}
-
-function getCanvasBlob() {
-  return new Promise(resolve => document.getElementById('score-canvas').toBlob(resolve, 'image/png'));
-}
-
-async function shareImage() {
-  const blob = await getCanvasBlob();
-  const file = new File([blob], 'woodlands-coffee-tour.png', { type: 'image/png' });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    await navigator.share({ files: [file], title: 'Woodlands Coffee Tour' }).catch(()=>{});
-  } else {
-    // Fallback: open in new tab so user can long-press save
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-  }
-}
-
-async function copyImage() {
-  try {
-    const blob = await getCanvasBlob();
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-    const btn = document.getElementById('copy-img-btn');
-    btn.textContent = '✓ Copied!';
-    setTimeout(() => btn.textContent = '⎘ Copy', 2000);
-  } catch {
-    saveImage();
-  }
-}
-
-function saveImage() {
-  const canvas = document.getElementById('score-canvas');
-  const a = document.createElement('a');
-  a.download = 'woodlands-coffee-tour.png';
-  a.href = canvas.toDataURL('image/png');
-  a.click();
+  if (curView === 'score') renderScorecard();
 }
 
 function clearAll() {
   if (!confirm('Clear all logs?')) return;
-  const d = getData();
-  d.logs = {};
-  saveData(d);
-  renderAll();
+  const d = getData(); d.logs = {}; saveData(d); renderAll();
 }
 
-// ---- Sheet ----
+// ── Log Sheet ──
 function openSheet(shopId) {
-  sheetShop = shopId;
-  sheetPerson = 0;
-  sheetRating = null;
-  const people = getPeople();
+  sheetShop=shopId; sheetPerson=0; sheetRating=null;
+  const p = getPeople();
   document.getElementById('sheet-title').textContent = SHOPS[shopId].name;
   document.getElementById('drink-input').value = '';
   document.getElementById('rat-good').className = 'rat-btn';
-  document.getElementById('rat-bad').className = 'rat-btn';
+  document.getElementById('rat-bad').className  = 'rat-btn';
   document.getElementById('save-btn').disabled = true;
   document.getElementById('ptog0').classList.add('active');
   document.getElementById('ptog1').classList.remove('active');
-  document.getElementById('ptog0-label').textContent = people[0];
-  document.getElementById('ptog1-label').textContent = people[1];
-
-  // Quick pills from this shop's suggestions
-  const pills = SHOPS[shopId].suggests.map(s =>
-    `<button class="qpill" onclick="pickPill('${s.replace(/'/g,"\\'")}')">+ ${s}</button>`
-  ).join('');
-  document.getElementById('quick-pills').innerHTML = pills;
-
-  document.getElementById('sheet-overlay').classList.add('open');
+  document.getElementById('ptog0-l').textContent = p[0];
+  document.getElementById('ptog1-l').textContent = p[1];
+  document.getElementById('quick-pills').innerHTML = SHOPS[shopId].suggests.map(s =>
+    `<button class="qpill" onclick="pickPill('${s.replace(/'/g,"\\'")}')">${s}</button>`).join('');
+  document.getElementById('log-overlay').classList.add('open');
   setTimeout(() => document.getElementById('drink-input').focus(), 350);
 }
 
 function closeSheet(e) {
-  if (e && e.target !== document.getElementById('sheet-overlay')) return;
-  document.getElementById('sheet-overlay').classList.remove('open');
+  if (e && e.target !== document.getElementById('log-overlay')) return;
+  document.getElementById('log-overlay').classList.remove('open');
 }
 
 function selectPerson(p) {
   sheetPerson = p;
-  document.getElementById('ptog0').classList.toggle('active', p === 0);
-  document.getElementById('ptog1').classList.toggle('active', p === 1);
+  document.getElementById('ptog0').classList.toggle('active', p===0);
+  document.getElementById('ptog1').classList.toggle('active', p===1);
 }
 
 function selectRating(r) {
   sheetRating = r;
-  document.getElementById('rat-good').className = 'rat-btn' + (r === 'good' ? ' good-sel' : '');
-  document.getElementById('rat-bad').className  = 'rat-btn' + (r === 'bad'  ? ' bad-sel'  : '');
+  document.getElementById('rat-good').className = 'rat-btn' + (r==='good'?' good-sel':'');
+  document.getElementById('rat-bad').className  = 'rat-btn' + (r==='bad' ?' bad-sel' :'');
   checkSave();
 }
 
@@ -953,8 +647,7 @@ function pickPill(name) {
 }
 
 function checkSave() {
-  const val = document.getElementById('drink-input').value.trim();
-  document.getElementById('save-btn').disabled = !(val && sheetRating);
+  document.getElementById('save-btn').disabled = !(document.getElementById('drink-input').value.trim() && sheetRating);
 }
 
 function saveLog() {
@@ -963,80 +656,188 @@ function saveLog() {
   const d = getData();
   if (!d.logs) d.logs = {};
   if (!d.logs[sheetShop]) d.logs[sheetShop] = [];
-  d.logs[sheetShop].push({ person: sheetPerson, drink, rating: sheetRating, ts: Date.now() });
+  d.logs[sheetShop].push({ person:sheetPerson, drink, rating:sheetRating, ts:Date.now() });
   saveData(d);
-  document.getElementById('sheet-overlay').classList.remove('open');
+  document.getElementById('log-overlay').classList.remove('open');
   renderShop(sheetShop);
-  renderScorecard();
+  if (curView === 'score') renderScorecard();
 }
 
-// ---- Suggest toggle ----
+function fillDrink(el, shopId) {
+  const name = el.textContent.replace(/^[\S]\s/, '').trim();
+  openSheet(shopId);
+  setTimeout(() => { document.getElementById('drink-input').value = name; checkSave(); }, 60);
+}
+
 function toggleSuggests(el) {
   const s = el.nextElementSibling;
   const open = s.classList.toggle('open');
-  el.textContent = (open ? '▾ ' : '▸ ') + 'Show signature drinks';
+  el.textContent = (open ? '▾ ' : '▸ ') + 'Signature drinks';
 }
 
-function fillDrink(el) {
-  // Used from suggest pills in slides (not sheet) — opens sheet with drink pre-filled
-  // Find parent slide's shop
-  const slide = el.closest('.slide');
-  const logSection = slide.querySelector('[id^="log-"]');
-  if (!logSection) return;
-  const shopId = logSection.id.replace('log-', '');
-  openSheet(shopId);
-  setTimeout(() => {
-    const name = el.textContent.replace(/^[^\w]+/, '').trim();
-    document.getElementById('drink-input').value = name;
-    checkSave();
-  }, 50);
+// ── Canvas Scorecard ──
+const PCOLORS = ['#7c3aed','#0ea5e9'];
+const CW = 800, CP = 52;
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
 }
 
-// ---- Deck nav ----
-function render() {
-  document.querySelectorAll('.slide').forEach((s, i) => {
-    s.classList.remove('active', 'prev');
-    if (i === cur) s.classList.add('active');
-    else if (i < cur) s.classList.add('prev');
-  });
-  document.getElementById('counter').textContent = `${cur + 1} / ${SLIDES}`;
-  document.getElementById('progress-fill').style.width = `${((cur + 1) / SLIDES) * 100}%`;
-  document.getElementById('btn-prev').disabled = cur === 0;
-  document.getElementById('btn-next').disabled = cur === SLIDES - 1;
-  if (cur === SLIDES - 1) renderScorecard();
-}
-
-function go(dir) {
-  if (document.getElementById('sheet-overlay').classList.contains('open')) return;
-  const n = cur + dir;
-  if (n >= 0 && n < SLIDES) { cur = n; render(); }
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') go(-1);
-});
-
-document.addEventListener('touchstart', e => {
-  if (document.getElementById('sheet-overlay').classList.contains('open')) return;
-  startX = e.touches[0].clientX;
-}, { passive: true });
-
-document.addEventListener('touchend', e => {
-  if (document.getElementById('sheet-overlay').classList.contains('open')) return;
-  const dx = e.changedTouches[0].clientX - startX;
-  if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
-});
-
-// ---- Init ----
-(function init() {
+function generateCard() {
   const d = getData();
-  if (d.p0) document.getElementById('name0').value = d.p0;
-  if (d.p1) document.getElementById('name1').value = d.p1;
-  document.getElementById('av0').textContent = (d.p0 || 'Chelsea')[0].toUpperCase();
-  document.getElementById('av1').textContent = (d.p1 || 'Sister')[0].toUpperCase();
+  const logs = d.logs || {};
+  const people = getPeople();
+  const date = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const dpr = Math.min(window.devicePixelRatio||2, 3);
+  const inner = CW - CP*2;
+
+  const pGood=[0,0], pBad=[0,0];
+  Object.values(logs).forEach(s=>s.forEach(e=>{ e.rating==='good'?pGood[e.person]++:pBad[e.person]++; }));
+  const visited = Object.entries(SHOPS).filter(([id])=>(logs[id]||[]).length>0);
+  const allEntries = Object.entries(logs).flatMap(([id,es])=>es.map(e=>({...e,shop:SHOPS[id].name})));
+  const goods = allEntries.filter(e=>e.rating==='good');
+  const bads  = allEntries.filter(e=>e.rating==='bad');
+
+  // Height calc
+  let H = 56+44+14+58+32+48+100+40;
+  visited.forEach(([id])=>{ H += 36 + (logs[id]||[]).length * 58 + 18; });
+  if (goods.length||bads.length) H += 120;
+  H += 72;
+
+  const canvas = document.getElementById('score-canvas');
+  canvas.width = CW*dpr; canvas.height = H*dpr;
+  canvas.style.height = (H*(canvas.offsetWidth/CW))+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  // BG
+  ctx.fillStyle = '#0c0c0c'; ctx.fillRect(0,0,CW,H);
+  const g = ctx.createLinearGradient(0,0,CW,220);
+  g.addColorStop(0,'rgba(124,58,237,.14)'); g.addColorStop(.5,'rgba(14,165,233,.07)'); g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,CW,220);
+
+  let y = 56;
+  ctx.textAlign='center';
+
+  ctx.font='44px serif'; ctx.fillText('☕',CW/2,y+32); y+=58;
+  ctx.font='800 50px -apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif';
+  ctx.fillStyle='#fff'; ctx.fillText('Coffee Tour',CW/2,y+44); y+=58;
+  ctx.font='500 19px -apple-system,sans-serif'; ctx.fillStyle='#555';
+  ctx.fillText('The Woodlands, TX  ·  '+date,CW/2,y+19); y+=32+28;
+
+  ctx.strokeStyle='#222'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(CP,y); ctx.lineTo(CW-CP,y); ctx.stroke(); y+=20;
+
+  // Stat cards
+  [0,1].forEach(pi=>{
+    const bx=CP+pi*(inner/2+16), bw=inner/2-8;
+    ctx.fillStyle='#161616'; roundRect(ctx,bx,y,bw,86,12); ctx.fill();
+    ctx.fillStyle=PCOLORS[pi]; ctx.beginPath(); ctx.arc(bx+28,y+43,20,0,Math.PI*2); ctx.fill();
+    ctx.font='700 16px -apple-system,sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center';
+    ctx.fillText(people[pi][0].toUpperCase(),bx+28,y+49);
+    ctx.font='700 19px -apple-system,sans-serif'; ctx.fillStyle='#eee'; ctx.textAlign='left';
+    ctx.fillText(people[pi],bx+56,y+35);
+    ctx.font='600 16px -apple-system,sans-serif';
+    ctx.fillStyle='#22c55e'; ctx.fillText('👍 '+pGood[pi],bx+56,y+60);
+    ctx.fillStyle='#ef4444'; ctx.fillText('👎 '+pBad[pi],bx+56+70,y+60);
+  });
+  y+=100;
+
+  ctx.strokeStyle='#1e1e1e'; ctx.beginPath(); ctx.moveTo(CP,y); ctx.lineTo(CW-CP,y); ctx.stroke(); y+=28;
+
+  // Shop entries
+  ctx.textAlign='left';
+  visited.forEach(([id,shop])=>{
+    ctx.font='600 12px -apple-system,sans-serif'; ctx.fillStyle='#3a3a3a';
+    ctx.fillText((shop.icon+' '+shop.name).toUpperCase(),CP,y+12);
+    const nw=ctx.measureText((shop.icon+' '+shop.name).toUpperCase()).width;
+    ctx.strokeStyle='#1e1e1e'; ctx.beginPath(); ctx.moveTo(CP+nw+12,y+7); ctx.lineTo(CW-CP,y+7); ctx.stroke();
+    y+=28;
+
+    (logs[id]||[]).forEach(e=>{
+      ctx.fillStyle='#141414'; roundRect(ctx,CP,y,inner,52,10); ctx.fill();
+      ctx.fillStyle=PCOLORS[e.person]; ctx.beginPath(); ctx.arc(CP+22,y+26,14,0,Math.PI*2); ctx.fill();
+      ctx.font='700 12px -apple-system,sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center';
+      ctx.fillText(people[e.person][0].toUpperCase(),CP+22,y+31);
+      ctx.textAlign='left';
+      ctx.font='600 21px -apple-system,sans-serif'; ctx.fillStyle='#e5e5e5';
+      let txt=e.drink;
+      while(ctx.measureText(txt).width>inner-100&&txt.length>3) txt=txt.slice(0,-1);
+      if(txt!==e.drink) txt=txt.trimEnd()+'…';
+      ctx.fillText(txt,CP+46,y+32);
+      ctx.font='24px serif'; ctx.textAlign='right';
+      ctx.fillText(e.rating==='good'?'👍':'👎',CW-CP-4,y+33);
+      y+=58;
+    });
+    y+=18;
+  });
+
+  if(goods.length||bads.length){
+    ctx.strokeStyle='#1e1e1e'; ctx.beginPath(); ctx.moveTo(CP,y); ctx.lineTo(CW-CP,y); ctx.stroke(); y+=24;
+    ctx.textAlign='left'; ctx.font='500 17px -apple-system,sans-serif';
+    if(goods.length){
+      const b=goods[goods.length-1];
+      ctx.fillStyle='#22c55e'; ctx.fillText('⭐ Best: ',CP,y+17);
+      const bw=ctx.measureText('⭐ Best: ').width;
+      ctx.fillStyle='#999'; ctx.fillText(b.drink+' · '+b.shop,CP+bw,y+17); y+=34;
+    }
+    if(bads.length){
+      const p=bads[bads.length-1];
+      ctx.fillStyle='#ef4444'; ctx.fillText('❌ Pass: ',CP,y+17);
+      const pw=ctx.measureText('❌ Pass: ').width;
+      ctx.fillStyle='#999'; ctx.fillText(p.drink+' · '+p.shop,CP+pw,y+17); y+=34;
+    }
+    y+=16;
+  }
+
+  ctx.strokeStyle='#1a1a1a'; ctx.beginPath(); ctx.moveTo(CP,y); ctx.lineTo(CW-CP,y); ctx.stroke(); y+=22;
+  ctx.font='500 15px -apple-system,sans-serif'; ctx.fillStyle='#2a2a2a'; ctx.textAlign='center';
+  ctx.fillText('carlobney.github.io/woodlands-coffee-deck/',CW/2,y+14);
+
+  document.getElementById('card-modal').classList.add('open');
+}
+
+function closeCard() { document.getElementById('card-modal').classList.remove('open'); }
+
+function getBlob() { return new Promise(r=>document.getElementById('score-canvas').toBlob(r,'image/png')); }
+
+async function shareImage() {
+  const blob = await getBlob();
+  const file = new File([blob],'woodlands-coffee-tour.png',{type:'image/png'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    await navigator.share({files:[file],title:'Woodlands Coffee Tour'}).catch(()=>{});
+  } else { window.open(URL.createObjectURL(blob),'_blank'); }
+}
+
+async function copyImage() {
+  try {
+    const blob = await getBlob();
+    await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+    const btn=document.getElementById('copy-btn');
+    btn.textContent='✓ Copied!';
+    setTimeout(()=>btn.textContent='⎘ Copy',2000);
+  } catch { saveImage(); }
+}
+
+function saveImage() {
+  const a=document.createElement('a');
+  a.download='woodlands-coffee-tour.png';
+  a.href=document.getElementById('score-canvas').toDataURL('image/png');
+  a.click();
+}
+
+// ── Init ──
+(function(){
+  const d=getData();
+  if(d.p0){ document.getElementById('name0').value=d.p0; document.getElementById('av0').textContent=d.p0[0].toUpperCase(); }
+  if(d.p1){ document.getElementById('name1').value=d.p1; document.getElementById('av1').textContent=d.p1[0].toUpperCase(); }
   renderAll();
-  render();
 })();
 </script>
 </body>
