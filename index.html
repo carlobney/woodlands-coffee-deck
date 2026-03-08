@@ -397,8 +397,8 @@
       <h2>Scorecard 🏆</h2>
       <div id="scorecard"></div>
       <div style="display:flex;gap:10px;margin-top:24px">
-        <button onclick="exportReport()" id="export-btn" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">⬆️ Share Report</button>
-        <button onclick="clearAll()" style="background:none;border:1px solid #222;color:#333;padding:12px 16px;border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;">Clear</button>
+        <button onclick="generateCard()" id="export-btn" style="flex:1;background:var(--accent);border:none;color:#000;padding:14px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Generate Scorecard ✦</button>
+        <button onclick="clearAll()" style="background:none;border:1px solid #222;color:#333;padding:14px 16px;border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;">Clear</button>
       </div>
     </div>
   </div>
@@ -411,6 +411,22 @@
   <span id="counter">1 / 8</span>
   <button class="nbtn" id="btn-next" onclick="go(1)">→</button>
 </nav>
+
+<!-- Card Preview Modal -->
+<div id="card-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;padding:20px 16px 40px;">
+  <div style="width:100%;max-width:520px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <span style="font-size:14px;font-weight:700;color:#fff">Scorecard</span>
+      <button onclick="closeCard()" style="background:none;border:none;color:#666;font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <canvas id="score-canvas" style="width:100%;border-radius:16px;display:block;"></canvas>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button id="share-img-btn" onclick="shareImage()" style="flex:1;background:#fff;color:#000;border:none;padding:14px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">⬆️ Share</button>
+      <button id="copy-img-btn" onclick="copyImage()" style="flex:1;background:#1a1a1a;color:#fff;border:none;padding:14px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">⎘ Copy</button>
+      <button id="save-img-btn" onclick="saveImage()" style="background:#1a1a1a;color:#fff;border:none;padding:14px 16px;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit;">↓</button>
+    </div>
+  </div>
+</div>
 
 <!-- Bottom Sheet -->
 <div id="sheet-overlay" onclick="closeSheet(event)">
@@ -574,67 +590,309 @@ function deleteLog(shopId, idx) {
   renderScorecard();
 }
 
-function exportReport() {
+// ---- Canvas Scorecard ----
+const W = 800; // logical canvas width
+const P = { colors: ['#7c3aed','#0ea5e9'] };
+
+function wrapText(ctx, text, x, y, maxW, lineH) {
+  const words = text.split(' ');
+  let line = '', ly = y;
+  for (const word of words) {
+    const test = line ? line + ' ' + word : word;
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line, x, ly);
+      line = word; ly += lineH;
+    } else { line = test; }
+  }
+  ctx.fillText(line, x, ly);
+  return ly + lineH;
+}
+
+function generateCard() {
   const d = getData();
   const logs = d.logs || {};
   const people = getPeople();
-  const date = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  const date = new Date().toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
 
-  // Tally
-  const pGood = [0,0], pBad = [0,0];
-  let totalDrinks = 0;
-  Object.values(logs).forEach(shop => shop.forEach(e => {
-    if (e.rating === 'good') pGood[e.person]++; else pBad[e.person]++;
-    totalDrinks++;
-  }));
+  const dpr = Math.min(window.devicePixelRatio || 2, 3);
+  const pad = 52;
+  const innerW = W - pad * 2;
 
-  let lines = [];
-  lines.push('☕ Woodlands Coffee Tour Report');
-  lines.push(date);
-  lines.push('');
-  lines.push(`👤 ${people[0]}: ${pGood[0]} 👍  ${pBad[0]} 👎`);
-  lines.push(`👤 ${people[1]}: ${pGood[1]} 👍  ${pBad[1]} 👎`);
-  lines.push(`Total drinks tried: ${totalDrinks}`);
-  lines.push('');
-  lines.push('─────────────────────');
+  // --- Measure pass: calc total height ---
+  let height = 0;
+  height += 56;   // top pad
+  height += 44;   // ☕ emoji
+  height += 14;   // gap
+  height += 58;   // title
+  height += 32;   // date
+  height += 48;   // gap + divider
+  height += 100;  // stats row
+  height += 40;   // gap + divider
 
-  Object.entries(SHOPS).forEach(([id, shop]) => {
+  const visitedShops = Object.entries(SHOPS).filter(([id]) => (logs[id]||[]).length > 0);
+  const tmpC = document.createElement('canvas');
+  tmpC.width = W; tmpC.height = 100;
+  const tmpCtx = tmpC.getContext('2d');
+  tmpCtx.font = '600 28px -apple-system, BlinkMacSystemFont, sans-serif';
+
+  visitedShops.forEach(([id, shop]) => {
+    height += 20; // shop name
+    height += 16; // gap
     const entries = logs[id] || [];
-    if (entries.length === 0) return;
-    lines.push('');
-    lines.push(shop.name);
     entries.forEach(e => {
-      const icon = e.rating === 'good' ? '👍' : '👎';
-      lines.push(`  ${icon} ${people[e.person]}: ${e.drink}`);
+      const textW = tmpCtx.measureText(e.drink).width;
+      const lines = Math.ceil(textW / (innerW - 120)) || 1;
+      height += Math.max(52, 28 + lines * 30);
     });
+    height += 24; // bottom gap
   });
 
-  // Best & worst
-  const allEntries = Object.entries(logs).flatMap(([id, es]) => es.map(e => ({ ...e, shop: SHOPS[id].name })));
-  const good = allEntries.filter(e => e.rating === 'good');
-  const bad  = allEntries.filter(e => e.rating === 'bad');
-  if (good.length || bad.length) {
-    lines.push('');
-    lines.push('─────────────────────');
-    if (good.length) lines.push(`⭐ Best: ${good[good.length-1].drink} @ ${good[good.length-1].shop}`);
-    if (bad.length)  lines.push(`❌ Pass: ${bad[bad.length-1].drink} @ ${bad[bad.length-1].shop}`);
-  }
+  const allEntries = Object.entries(logs).flatMap(([id, es]) => es.map(e => ({...e, shop: SHOPS[id].name})));
+  const goods = allEntries.filter(e => e.rating === 'good');
+  const bads  = allEntries.filter(e => e.rating === 'bad');
+  if (goods.length || bads.length) { height += 120; }
+  height += 72; // footer
 
-  lines.push('');
-  lines.push('carlobney.github.io/woodlands-coffee-deck/');
+  const canvas = document.getElementById('score-canvas');
+  canvas.width  = W * dpr;
+  canvas.height = height * dpr;
+  canvas.style.height = (height * (canvas.offsetWidth / W)) + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
 
-  const text = lines.join('\n');
+  // --- Background ---
+  ctx.fillStyle = '#0c0c0c';
+  ctx.fillRect(0, 0, W, height);
 
-  if (navigator.share) {
-    navigator.share({ title: 'Woodlands Coffee Tour', text })
-      .catch(() => {});
-  } else {
-    navigator.clipboard.writeText(text).then(() => {
-      const btn = document.getElementById('export-btn');
-      btn.textContent = '✓ Copied!';
-      setTimeout(() => btn.textContent = '⬆️ Share Report', 2000);
+  // Subtle gradient header wash
+  const grad = ctx.createLinearGradient(0, 0, W, 240);
+  grad.addColorStop(0, 'rgba(124,58,237,0.12)');
+  grad.addColorStop(0.5, 'rgba(14,165,233,0.06)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, 240);
+
+  let y = 56;
+
+  // Emoji
+  ctx.font = '42px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('☕', W/2, y + 32);
+  y += 44 + 14;
+
+  // Title
+  ctx.font = `800 52px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('Coffee Tour', W/2, y + 46);
+  y += 58;
+
+  // Date + location
+  ctx.font = `500 20px -apple-system, BlinkMacSystemFont, sans-serif`;
+  ctx.fillStyle = '#555';
+  ctx.fillText(`The Woodlands, TX  ·  ${date}`, W/2, y + 20);
+  y += 32;
+
+  // Divider
+  y += 28;
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
+  y += 20;
+
+  // --- Stats row ---
+  const pGood = [0,0], pBad = [0,0];
+  Object.values(logs).forEach(shop => shop.forEach(e => {
+    if (e.rating === 'good') pGood[e.person]++; else pBad[e.person]++;
+  }));
+
+  [0,1].forEach(pi => {
+    const bx = pad + pi * (innerW / 2 + 16);
+    const bw = innerW / 2 - 8;
+
+    // Card bg
+    ctx.fillStyle = '#161616';
+    roundRect(ctx, bx, y, bw, 86, 12);
+    ctx.fill();
+
+    // Avatar circle
+    ctx.fillStyle = P.colors[pi];
+    ctx.beginPath(); ctx.arc(bx + 28, y + 43, 20, 0, Math.PI*2); ctx.fill();
+    ctx.font = `700 17px -apple-system, sans-serif`;
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.fillText(people[pi][0].toUpperCase(), bx + 28, y + 49);
+
+    // Name
+    ctx.font = `700 20px -apple-system, sans-serif`;
+    ctx.fillStyle = '#eee';
+    ctx.textAlign = 'left';
+    ctx.fillText(people[pi], bx + 58, y + 36);
+
+    // Counts
+    ctx.font = `500 17px -apple-system, sans-serif`;
+    ctx.fillStyle = '#22c55e';
+    ctx.fillText(`👍 ${pGood[pi]}`, bx + 58, y + 62);
+    ctx.fillStyle = '#ef4444';
+    ctx.fillText(`  👎 ${pBad[pi]}`, bx + 108, y + 62);
+  });
+  y += 100;
+
+  // Divider
+  ctx.strokeStyle = '#1e1e1e';
+  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
+  y += 28;
+
+  // --- Shop sections ---
+  ctx.textAlign = 'left';
+  visitedShops.forEach(([id, shop]) => {
+    const entries = logs[id] || [];
+
+    // Shop name
+    ctx.font = `600 13px -apple-system, sans-serif`;
+    ctx.fillStyle = '#444';
+    ctx.letterSpacing = '0.08em';
+    ctx.fillText(shop.name.toUpperCase(), pad, y + 13);
+    ctx.letterSpacing = '0';
+
+    // Thin line after name
+    ctx.strokeStyle = '#1e1e1e';
+    ctx.lineWidth = 1;
+    const nameW = ctx.measureText(shop.name.toUpperCase()).width;
+    ctx.beginPath(); ctx.moveTo(pad + nameW + 12, y + 8); ctx.lineTo(W - pad, y + 8); ctx.stroke();
+    y += 16 + 14;
+
+    entries.forEach(e => {
+      const rowH = 52;
+      // Entry bg
+      ctx.fillStyle = '#141414';
+      roundRect(ctx, pad, y, innerW, rowH, 10);
+      ctx.fill();
+
+      // Avatar
+      ctx.fillStyle = P.colors[e.person];
+      ctx.beginPath(); ctx.arc(pad + 22, y + rowH/2, 14, 0, Math.PI*2); ctx.fill();
+      ctx.font = `700 12px -apple-system, sans-serif`;
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.fillText(people[e.person][0].toUpperCase(), pad + 22, y + rowH/2 + 4);
+
+      // Drink name
+      ctx.textAlign = 'left';
+      ctx.font = `600 22px -apple-system, sans-serif`;
+      ctx.fillStyle = '#e8e8e8';
+      const drinkX = pad + 48;
+      const maxDrinkW = innerW - 100;
+
+      // Simple single-line (truncate if too wide)
+      let drinkText = e.drink;
+      while (ctx.measureText(drinkText).width > maxDrinkW && drinkText.length > 4) {
+        drinkText = drinkText.slice(0, -1);
+      }
+      if (drinkText !== e.drink) drinkText = drinkText.trimEnd() + '…';
+      ctx.fillText(drinkText, drinkX, y + rowH/2 + 8);
+
+      // Rating emoji
+      ctx.font = '24px serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(e.rating === 'good' ? '👍' : '👎', W - pad - 4, y + rowH/2 + 9);
+
+      y += rowH + 6;
     });
+    y += 18;
+  });
+
+  // --- Best / Pass ---
+  if (goods.length || bads.length) {
+    ctx.strokeStyle = '#1e1e1e';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
+    y += 24;
+
+    if (goods.length) {
+      const best = goods[goods.length - 1];
+      ctx.font = `500 18px -apple-system, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#22c55e';
+      ctx.fillText('⭐ Best: ', pad, y + 18);
+      const bw = ctx.measureText('⭐ Best: ').width;
+      ctx.fillStyle = '#aaa';
+      ctx.fillText(`${best.drink}  ·  ${best.shop}`, pad + bw, y + 18);
+      y += 34;
+    }
+    if (bads.length) {
+      const pass = bads[bads.length - 1];
+      ctx.font = `500 18px -apple-system, sans-serif`;
+      ctx.fillStyle = '#ef4444';
+      ctx.fillText('❌ Pass: ', pad, y + 18);
+      const pw = ctx.measureText('❌ Pass: ').width;
+      ctx.fillStyle = '#aaa';
+      ctx.fillText(`${pass.drink}  ·  ${pass.shop}`, pad + pw, y + 18);
+      y += 34;
+    }
+    y += 16;
   }
+
+  // --- Footer ---
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W-pad, y); ctx.stroke();
+  y += 24;
+  ctx.font = `500 16px -apple-system, sans-serif`;
+  ctx.fillStyle = '#2a2a2a';
+  ctx.textAlign = 'center';
+  ctx.fillText('carlobney.github.io/woodlands-coffee-deck/', W/2, y + 16);
+
+  // Show modal
+  document.getElementById('card-modal').style.display = 'flex';
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+function closeCard() {
+  document.getElementById('card-modal').style.display = 'none';
+}
+
+function getCanvasBlob() {
+  return new Promise(resolve => document.getElementById('score-canvas').toBlob(resolve, 'image/png'));
+}
+
+async function shareImage() {
+  const blob = await getCanvasBlob();
+  const file = new File([blob], 'woodlands-coffee-tour.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    await navigator.share({ files: [file], title: 'Woodlands Coffee Tour' }).catch(()=>{});
+  } else {
+    // Fallback: open in new tab so user can long-press save
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  }
+}
+
+async function copyImage() {
+  try {
+    const blob = await getCanvasBlob();
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    const btn = document.getElementById('copy-img-btn');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = '⎘ Copy', 2000);
+  } catch {
+    saveImage();
+  }
+}
+
+function saveImage() {
+  const canvas = document.getElementById('score-canvas');
+  const a = document.createElement('a');
+  a.download = 'woodlands-coffee-tour.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
 }
 
 function clearAll() {
