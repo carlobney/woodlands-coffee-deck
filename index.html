@@ -594,11 +594,10 @@ function renderShop(shopId) {
     return `<div class="log-entry">
       <div class="le-avatar ${e.person===0?'av0':'av1'}">${people[e.person][0].toUpperCase()}</div>
       <div class="le-drink">
-        <div class="le-drink-name">${e.drink}</div>
-        <div class="le-drink-who">${people[e.person]}${isMarked ? ' · <span style="color:'+(e.rating==='good'?'#facc15':'#ef4444')+';font-size:11px">'+crownTitle+'</span>' : ''}</div>
+        <div class="le-drink-name">${e.drink}${isMarked ? ' <span style="font-size:14px">'+(e.rating==='good'?'⭐':'💀')+'</span>' : ''}</div>
+        <div class="le-drink-who">${people[e.person]}</div>
       </div>
       <span class="le-rating">${e.rating==='good'?'👍':'👎'}</span>
-      <button class="le-crown ${isMarked?'active':''}" title="${crownTitle}" onclick="markAs('${shopId}',${i},'${crownKey}')">${crownIcon}</button>
       <button class="le-del" onclick="deleteLog('${shopId}',${i})">×</button>
     </div>`;
   }).join('');
@@ -639,11 +638,15 @@ function renderScorecard() {
   if (!visited.length) { document.getElementById('score-shops').innerHTML = '<p style="color:#222;font-size:14px;margin-bottom:16px">No drinks logged yet.</p>'; return; }
   visited.forEach(([id, shop]) => {
     html += `<div class="score-shop"><div class="score-shop-name">${shop.icon} ${shop.name}</div>`;
-    (logs[id]||[]).forEach(e => {
+    (logs[id]||[]).forEach((e, i) => {
+      const crownIcon = e.rating === 'good' ? '⭐' : '💀';
+      const crownKey  = e.rating === 'good' ? 'best' : 'worst';
+      const isMarked  = e[crownKey] === true;
       html += `<div class="score-entry">
         <div class="le-avatar ${e.person===0?'av0':'av1'}" style="width:26px;height:26px;font-size:11px">${people[e.person][0].toUpperCase()}</div>
-        <div style="flex:1;font-size:14px">${e.drink}</div>
-        <span style="font-size:18px">${e.rating==='good'?'👍':'👎'}</span>
+        <div style="flex:1;font-size:14px;font-weight:600">${e.drink}<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:6px">${people[e.person]}</span></div>
+        <span style="font-size:16px">${e.rating==='good'?'👍':'👎'}</span>
+        <button class="le-crown ${isMarked?'active':''}" onclick="markAs('${id}',${i},'${crownKey}')" title="${isMarked?(crownKey==='best'?'Best of tour':'Biggest miss'):(crownKey==='best'?'Mark as best':'Mark as biggest miss')}">${crownIcon}</button>
       </div>`;
     });
     html += `</div>`;
