@@ -3,438 +3,717 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Woodlands Coffee Guide</title>
+<title>Woodlands Coffee Tour</title>
 <style>
   :root {
     --bg: #0f0f0f;
     --surface: #1a1a1a;
-    --accent: #ffffff;
-    --muted: #666;
+    --surface2: #222;
+    --border: #2a2a2a;
+    --accent: #fff;
+    --muted: #555;
     --text: #f0f0f0;
-    --tag: #2a2a2a;
+    --good: #22c55e;
+    --bad: #ef4444;
     --radius: 12px;
-    --slide-max: 680px;
+    --max: 600px;
   }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
   body {
-    background: var(--bg);
-    color: var(--text);
+    background: var(--bg); color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    display: flex; flex-direction: column;
     touch-action: pan-y;
   }
 
-  #progress-bar { height: 3px; background: var(--muted); flex-shrink: 0; }
-  #progress-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+  /* Progress */
+  #progress { height: 3px; background: var(--border); flex-shrink: 0; }
+  #progress-fill { height: 100%; background: var(--accent); transition: width .3s ease; }
 
+  /* Deck */
   #deck { flex: 1; overflow: hidden; position: relative; }
-
   .slide {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 32px 24px;
-    opacity: 0;
-    transform: translateX(100%);
-    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.35s ease;
-    overflow-y: auto;
+    position: absolute; inset: 0;
+    overflow-y: auto; overflow-x: hidden;
+    padding: 28px 20px 20px;
+    opacity: 0; transform: translateX(100%);
+    transition: transform .35s cubic-bezier(.4,0,.2,1), opacity .35s ease;
+    display: flex; flex-direction: column; align-items: center;
   }
   .slide.active { opacity: 1; transform: translateX(0); }
-  .slide.prev { opacity: 0; transform: translateX(-100%); }
+  .slide.prev   { opacity: 0; transform: translateX(-100%); }
+  .slide-inner  { width: 100%; max-width: var(--max); }
 
-  .slide-inner { width: 100%; max-width: var(--slide-max); }
-  .slide-title .slide-inner { text-align: center; }
-
-  .slide-kicker {
-    font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--muted); margin-bottom: 16px;
-  }
-
-  h1 {
-    font-size: clamp(28px, 7vw, 52px); font-weight: 700;
-    line-height: 1.1; letter-spacing: -0.02em;
-  }
-  h2 {
-    font-size: clamp(20px, 5vw, 32px); font-weight: 700;
-    line-height: 1.2; letter-spacing: -0.02em; margin-bottom: 18px;
-  }
-
-  .slide-subtitle {
-    font-size: clamp(14px, 3vw, 17px); color: var(--muted);
-    margin-top: 12px; line-height: 1.5;
-  }
-
-  p { font-size: clamp(14px, 3.2vw, 17px); line-height: 1.65; margin-bottom: 10px; }
-
-  ul { padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
-  li {
-    font-size: clamp(13px, 3vw, 16px); line-height: 1.5;
-    padding: 11px 14px; background: var(--surface); border-radius: 8px;
-    display: flex; gap: 10px; align-items: flex-start;
-  }
-  li::before { content: '→'; color: var(--muted); flex-shrink: 0; margin-top: 1px; }
-
-  .tag {
-    display: inline-block; background: var(--tag); border-radius: 6px;
-    padding: 4px 10px; font-size: 12px; font-weight: 500;
-    color: var(--muted); margin-bottom: 14px;
-  }
-
-  .callout {
-    font-size: clamp(32px, 9vw, 64px); font-weight: 800;
-    letter-spacing: -0.03em; line-height: 1; margin-bottom: 8px;
-  }
-  .callout-label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
-
-  blockquote {
-    border-left: 3px solid var(--accent); padding: 12px 16px;
-    font-size: clamp(14px, 3.2vw, 18px); font-style: italic;
-    line-height: 1.6; color: #ccc; margin: 12px 0;
-  }
-
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
-  .grid-cell { background: var(--surface); border-radius: var(--radius); padding: 14px; }
-  .grid-cell-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 5px; }
-  .grid-cell-value { font-size: clamp(13px, 2.8vw, 15px); font-weight: 600; line-height: 1.4; }
-
-  .hours-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #1e1e1e; font-size: 14px; }
-  .hours-row:last-child { border-bottom: none; }
-  .hours-day { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
-  .hours-closed { color: #444; }
-
-  .rank-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border-radius: 8px; margin-bottom: 8px; }
-  .rank-num { font-size: 18px; font-weight: 800; color: var(--muted); width: 28px; flex-shrink: 0; }
-  .rank-name { font-size: 15px; font-weight: 600; }
-  .rank-note { font-size: 12px; color: var(--muted); margin-top: 2px; }
-
+  /* Nav */
   #nav {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 24px; flex-shrink: 0; border-top: 1px solid #1a1a1a;
+    padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0;
   }
-  .nav-btn {
+  .nbtn {
     background: var(--surface); border: none; color: var(--text);
-    width: 44px; height: 44px; border-radius: 50%; font-size: 20px;
+    width: 42px; height: 42px; border-radius: 50%; font-size: 18px;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: background 0.15s, opacity 0.15s; -webkit-tap-highlight-color: transparent;
   }
-  .nav-btn:disabled { opacity: 0.2; cursor: default; }
-  .nav-btn:not(:disabled):active { background: #2a2a2a; }
-  #counter { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: 0.05em; }
+  .nbtn:disabled { opacity: .2; }
+  #counter { font-size: 13px; color: var(--muted); }
+
+  /* Typography */
+  .kicker { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  h1 { font-size: clamp(26px, 7vw, 46px); font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+  h2 { font-size: clamp(20px, 5vw, 28px); font-weight: 700; letter-spacing: -.02em; line-height: 1.2; margin-bottom: 14px; }
+  .sub { font-size: 14px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+
+  /* Hours grid */
+  .hours { margin-bottom: 16px; }
+  .hour-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .hour-row:last-child { border: none; }
+  .hday { color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
+  .hclosed { color: #333; }
+
+  /* Suggestions */
+  .suggest-toggle { font-size: 12px; color: var(--muted); cursor: pointer; margin-bottom: 10px; display: inline-block; }
+  .suggests { display: none; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .suggests.open { display: flex; }
+  .suggest-pill {
+    background: var(--surface2); border-radius: 8px; padding: 8px 12px;
+    font-size: 13px; cursor: pointer; transition: background .15s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .suggest-pill:active { background: #2e2e2e; }
+  .suggest-pill .sp-icon { font-size: 15px; }
+
+  /* Log section */
+  .log-section { margin-top: 4px; }
+  .log-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .log-title { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+  .log-add-btn {
+    background: var(--surface2); border: none; color: var(--text);
+    font-size: 13px; padding: 6px 14px; border-radius: 20px; cursor: pointer;
+    font-weight: 600; letter-spacing: .02em;
+  }
+  .log-entries { display: flex; flex-direction: column; gap: 6px; }
+  .log-entry {
+    background: var(--surface); border-radius: 10px; padding: 10px 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .le-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .le-p0 { background: #7c3aed; color: #fff; }
+  .le-p1 { background: #0ea5e9; color: #fff; }
+  .le-drink { flex: 1; font-size: 13px; line-height: 1.3; }
+  .le-rating { font-size: 18px; }
+  .le-del { background: none; border: none; color: #333; font-size: 16px; cursor: pointer; padding: 0 4px; }
+  .empty-log { font-size: 13px; color: #333; padding: 8px 0; }
+
+  /* Bottom sheet overlay */
+  #sheet-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    z-index: 100; display: none; align-items: flex-end;
+  }
+  #sheet-overlay.open { display: flex; }
+  #sheet {
+    background: #181818; border-radius: 20px 20px 0 0;
+    padding: 24px 20px 36px;
+    width: 100%; max-width: 600px; margin: 0 auto;
+    transform: translateY(100%); transition: transform .3s cubic-bezier(.4,0,.2,1);
+  }
+  #sheet-overlay.open #sheet { transform: translateY(0); }
+  .sheet-handle { width: 40px; height: 4px; background: #333; border-radius: 2px; margin: 0 auto 20px; }
+  .sheet-title { font-size: 16px; font-weight: 700; margin-bottom: 18px; }
+
+  /* Person toggle */
+  .person-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+  .ptog {
+    flex: 1; padding: 10px; border-radius: 10px; border: 2px solid var(--border);
+    background: none; color: var(--muted); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all .15s; display: flex; align-items: center;
+    justify-content: center; gap: 6px;
+  }
+  .ptog.active { border-color: var(--accent); color: var(--accent); background: rgba(255,255,255,.05); }
+
+  /* Drink input */
+  .drink-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; font-weight: 600; }
+  .drink-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-size: 15px; padding: 12px 14px;
+    border-radius: 10px; outline: none; margin-bottom: 16px;
+    font-family: inherit;
+  }
+  .drink-input:focus { border-color: #444; }
+  .quick-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .qpill {
+    background: var(--surface2); border: none; color: #888;
+    font-size: 12px; padding: 5px 10px; border-radius: 20px;
+    cursor: pointer; font-family: inherit;
+  }
+  .qpill:active { background: #2e2e2e; color: var(--text); }
+
+  /* Rating buttons */
+  .rating-row { display: flex; gap: 10px; margin-bottom: 20px; }
+  .rat-btn {
+    flex: 1; padding: 14px; border-radius: 12px; border: 2px solid var(--border);
+    background: none; font-size: 22px; cursor: pointer; transition: all .15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    color: var(--muted);
+  }
+  .rat-btn span { font-size: 13px; font-weight: 600; }
+  .rat-btn.good-sel { border-color: var(--good); color: var(--good); background: rgba(34,197,94,.08); }
+  .rat-btn.bad-sel  { border-color: var(--bad);  color: var(--bad);  background: rgba(239,68,68,.08); }
+
+  .save-btn {
+    width: 100%; padding: 15px; background: var(--accent); color: #000;
+    border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+  }
+  .save-btn:disabled { opacity: .3; }
+
+  /* Cover slide */
+  .cover-center { min-height: 60vh; display: flex; flex-direction: column; justify-content: center; }
+
+  /* Name setup */
+  .name-setup { margin-top: 32px; }
+  .name-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .name-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+  .name-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-size: 14px; padding: 10px 12px;
+    border-radius: 10px; outline: none; font-family: inherit;
+  }
+
+  /* Scorecard */
+  .score-shop { margin-bottom: 20px; }
+  .score-shop-name { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 11px; }
+  .score-entry { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface); border-radius: 10px; margin-bottom: 6px; }
+  .score-empty { font-size: 13px; color: #2a2a2a; padding: 6px 0; }
+
+  /* divider */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+  @media (min-height: 750px) { .slide { padding-top: 36px; } }
 </style>
 </head>
 <body>
 
-<div id="progress-bar"><div id="progress-fill"></div></div>
+<div id="progress"><div id="progress-fill"></div></div>
 
 <div id="deck">
 
-  <!-- 1. Title -->
-  <div class="slide slide-title">
+  <!-- 0: Cover & Setup -->
+  <div class="slide active" id="slide-0">
     <div class="slide-inner">
-      <div class="slide-kicker">The Woodlands, TX</div>
-      <h1>Coffee Guide</h1>
-      <p class="slide-subtitle">Best spots, hours & signature iced drinks<br>Fri · Sat · Sun</p>
+      <div class="cover-center">
+        <div class="kicker">The Woodlands, TX</div>
+        <h1>Coffee Tour ☕</h1>
+        <p class="sub">Log what you tried. Rate it. Keep score.</p>
+        <div class="name-setup">
+          <div class="name-row">
+            <div class="name-avatar le-p0" id="av0">C</div>
+            <input class="name-input" id="name0" placeholder="Person 1 name" value="Chelsea" oninput="savePeople()">
+          </div>
+          <div class="name-row">
+            <div class="name-avatar le-p1" id="av1">S</div>
+            <input class="name-input" id="name1" placeholder="Person 2 name" value="Sister" oninput="savePeople()">
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- 2. The lineup -->
-  <div class="slide">
+  <!-- 1: Conduit Coffee -->
+  <div class="slide" id="slide-1">
     <div class="slide-inner">
-      <div class="slide-kicker">6 Shops</div>
-      <h2>The Lineup</h2>
-      <ul>
-        <li>Conduit Coffee — Panther Creek</li>
-        <li>Third Gen Coffee — Grogan's Park</li>
-        <li>Ome Calli Café — Grogan's Mill Village</li>
-        <li>Serenity Sips — I-45 N (Shenandoah)</li>
-        <li>Blue Door Coffee — The Waterway</li>
-        <li>Bluestone Lane — Lake Woodlands Dr</li>
-      </ul>
+      <div class="kicker">Stop 1 of 6 · Panther Creek</div>
+      <h2>Conduit Coffee ☕</h2>
+      <div class="hours">
+        <div class="hour-row"><span class="hday">Fri</span><span>7:30am – 3pm</span></div>
+        <div class="hour-row"><span class="hday">Sat</span><span>7:30am – 3pm</span></div>
+        <div class="hour-row"><span class="hday">Sun</span><span>7:30am – 3pm</span></div>
+      </div>
+      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Show signature drinks</span>
+      <div class="suggests">
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⭐</span>Miso Caramel Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🍫</span>Sea Salt Cacao</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🥃</span>Call Me Old Fashioned</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🌿</span>Mint Royale</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">💜</span>Lavender Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🍯</span>Local Honey Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🧊</span>Cold Brew</div>
+      </div>
+      <div class="log-section">
+        <div class="log-header">
+          <span class="log-title">Logged</span>
+          <button class="log-add-btn" onclick="openSheet('conduit')">+ Log a drink</button>
+        </div>
+        <div class="log-entries" id="log-conduit"></div>
+      </div>
     </div>
   </div>
 
-  <!-- 3. Conduit Coffee -->
-  <div class="slide">
+  <!-- 2: Third Gen -->
+  <div class="slide" id="slide-2">
     <div class="slide-inner">
-      <span class="tag">☕ #1 for Iced</span>
-      <h2>Conduit Coffee</h2>
-      <div class="hours-row"><span class="hours-day">Friday</span><span>7:30am – 3pm</span></div>
-      <div class="hours-row"><span class="hours-day">Saturday</span><span>7:30am – 3pm</span></div>
-      <div class="hours-row"><span class="hours-day">Sunday</span><span>7:30am – 3pm</span></div>
-      <p style="margin-top:14px; color:#888; font-size:13px;">27140 Glen Loch Dr · LGBTQIA+ owned · plant-filled vibes</p>
-    </div>
-  </div>
-
-  <!-- 4. Conduit drinks -->
-  <div class="slide">
-    <div class="slide-inner">
-      <span class="tag">Conduit Signature Drinks</span>
-      <h2>What to Order</h2>
-      <ul>
-        <li><strong>Miso Caramel Latte</strong> — the crowd favorite</li>
-        <li><strong>Sea Salt Cacao</strong> — rich & subtle</li>
-        <li><strong>Call Me Old Fashioned</strong> — named house drink</li>
-        <li><strong>Mint Royale</strong> — warm-spiced</li>
-        <li>Lavender · Local Honey · Cold Brew</li>
-      </ul>
-      <p style="margin-top:12px; color:#555; font-size:12px;">All syrups house-made with evaporated cane sugar. Seasonal rotations.</p>
-    </div>
-  </div>
-
-  <!-- 5. Third Gen -->
-  <div class="slide">
-    <div class="slide-inner">
-      <span class="tag">Honduran Farm Beans</span>
+      <div class="kicker">Stop 2 of 6 · Grogan's Park</div>
       <h2>Third Gen Coffee</h2>
-      <div class="hours-row"><span class="hours-day">Friday</span><span>7am – 5pm</span></div>
-      <div class="hours-row"><span class="hours-day">Saturday</span><span>7am – 5pm</span></div>
-      <div class="hours-row"><span class="hours-day">Sunday</span><span>8am – 3pm</span></div>
-      <p style="margin-top:14px; color:#888; font-size:13px;">25136 Grogan's Park Dr · family-owned since 2017</p>
-    </div>
-  </div>
-
-  <!-- 6. Third Gen drinks -->
-  <div class="slide">
-    <div class="slide-inner">
-      <span class="tag">Third Gen Signature Drinks</span>
-      <h2>What to Order</h2>
-      <ul>
-        <li><strong>Cane Break</strong> — espresso + brown sugar</li>
-        <li><strong>Golden Spice</strong> — honey, cinnamon, turmeric</li>
-        <li><strong>Cinnamon Roll</strong> — cinnamon, vanilla, white choc</li>
-        <li>Frozen cold brew · Lavender latte · Mocha</li>
-      </ul>
-      <p style="margin-top:12px; color:#555; font-size:12px;">Beans sourced directly from their family farm in Honduras.</p>
-    </div>
-  </div>
-
-  <!-- 7. Ome Calli -->
-  <div class="slide">
-    <div class="slide-inner">
-      <span class="tag">Plant-Based · Mushroom Coffee</span>
-      <h2>Ome Calli Café</h2>
-      <div class="hours-row"><span class="hours-day">Friday</span><span>7am – 6pm</span></div>
-      <div class="hours-row"><span class="hours-day">Saturday</span><span>7am – 6pm</span></div>
-      <div class="hours-row"><span class="hours-day">Sunday</span><span>8am – 4pm</span></div>
-      <p style="margin-top:14px; color:#888; font-size:13px;">2260 Buckthorne Pl #179 · organic, vegan-friendly, family-run</p>
-    </div>
-  </div>
-
-  <!-- 8. Ome Calli drinks -->
-  <div class="slide">
-    <div class="slide-inner">
-      <span class="tag">Ome Calli Signature Drinks</span>
-      <h2>What to Order</h2>
-      <ul>
-        <li><strong>The Alchemist</strong> — cacao, cinnamon, reishi, espresso, agave</li>
-        <li><strong>The Salted Maple</strong> — espresso, maple syrup, Himalayan salt</li>
-        <li>Mushroom coffee · Organic iced lattes</li>
-      </ul>
-      <p style="margin-top:12px; color:#555; font-size:12px;">Most unique flavor profiles on this list. Earthy, creative, functional.</p>
-    </div>
-  </div>
-
-  <!-- 9. Serenity Sips -->
-  <div class="slide">
-    <div class="slide-inner">
-      <span class="tag">Wellness Café · Matcha Forward</span>
-      <h2>Serenity Sips</h2>
-      <div class="hours-row"><span class="hours-day">Friday</span><span>9am – 7pm</span></div>
-      <div class="hours-row"><span class="hours-day">Saturday</span><span>9am – 3pm</span></div>
-      <div class="hours-row"><span class="hours-day">Sunday</span><span class="hours-closed">Closed</span></div>
-      <p style="margin-top:14px; color:#888; font-size:13px;">26411 I-45 N, Shenandoah · ⚠️ Closed Sundays</p>
-    </div>
-  </div>
-
-  <!-- 10. Serenity drinks -->
-  <div class="slide">
-    <div class="slide-inner">
-      <span class="tag">Serenity Sips Signatures</span>
-      <h2>What to Order</h2>
-      <ul>
-        <li><strong>Matcha Fog</strong> — lavender + vanilla matcha ($7.50)</li>
-        <li><strong>Lifted Lemonade</strong> — ($6.99)</li>
-        <li><strong>Magic Magnesium</strong> — functional lemonade</li>
-        <li>Iced Lavender Matcha · Beetroot Cacao Latte</li>
-      </ul>
-      <p style="margin-top:12px; color:#555; font-size:12px;">Less coffee-forward, more wellness. Everything made fresh to order.</p>
-    </div>
-  </div>
-
-  <!-- 11. Blue Door -->
-  <div class="slide">
-    <div class="slide-inner">
-      <span class="tag">Waterway Location</span>
-      <h2>Blue Door Coffee</h2>
-      <div class="hours-row"><span class="hours-day">Friday</span><span>7am – 5pm</span></div>
-      <div class="hours-row"><span class="hours-day">Saturday</span><span>7am – 5pm</span></div>
-      <div class="hours-row"><span class="hours-day">Sunday</span><span>8am – 5pm</span></div>
-      <p style="margin-top:14px; color:#888; font-size:13px;">21 Waterway Ave · inside Woodlands Waterway Marriott · validates parking</p>
-    </div>
-  </div>
-
-  <!-- 12. Blue Door drinks -->
-  <div class="slide">
-    <div class="slide-inner">
-      <span class="tag">Blue Door Drinks</span>
-      <h2>What to Order</h2>
-      <ul>
-        <li><strong>Honey Cinnamon Latte</strong> — local favorite</li>
-        <li>Rotating seasonal iced lattes</li>
-        <li>Standard iced espresso drinks, well-executed</li>
-      </ul>
-      <p style="margin-top:12px; color:#555; font-size:12px;">Solid classics. Scenic waterway spot. Great people-watching.</p>
-    </div>
-  </div>
-
-  <!-- 13. Bluestone Lane -->
-  <div class="slide">
-    <div class="slide-inner">
-      <span class="tag">Australian Café Vibes</span>
-      <h2>Bluestone Lane</h2>
-      <div class="hours-row"><span class="hours-day">Friday</span><span>7:30am – 5pm</span></div>
-      <div class="hours-row"><span class="hours-day">Saturday</span><span>7:30am – 5pm</span></div>
-      <div class="hours-row"><span class="hours-day">Sunday</span><span>7:30am – 5pm</span></div>
-      <p style="margin-top:14px; color:#888; font-size:13px;">1900 Lake Woodlands Dr · next to Total Wine</p>
-    </div>
-  </div>
-
-  <!-- 14. Bluestone drinks -->
-  <div class="slide">
-    <div class="slide-inner">
-      <span class="tag">Bluestone Lane Drinks</span>
-      <h2>What to Order</h2>
-      <ul>
-        <li><strong>Iced Flat White</strong> — their calling card</li>
-        <li>Cold-pressed juices · wellness drinks</li>
-        <li>Avocado smash & banana bread if you're eating</li>
-      </ul>
-      <p style="margin-top:12px; color:#555; font-size:12px;">Not a flavor-latte kind of place — premium espresso done right.</p>
-    </div>
-  </div>
-
-  <!-- 15. Iced coffee ranking -->
-  <div class="slide">
-    <div class="slide-inner">
-      <span class="tag">For the Iced Coffee Lover</span>
-      <h2>Ranked</h2>
-      <div class="rank-item">
-        <div class="rank-num">1</div>
-        <div><div class="rank-name">Conduit Coffee</div><div class="rank-note">Miso Caramel · Sea Salt Cacao · house syrups</div></div>
+      <div class="hours">
+        <div class="hour-row"><span class="hday">Fri</span><span>7am – 5pm</span></div>
+        <div class="hour-row"><span class="hday">Sat</span><span>7am – 5pm</span></div>
+        <div class="hour-row"><span class="hday">Sun</span><span>8am – 3pm</span></div>
       </div>
-      <div class="rank-item">
-        <div class="rank-num">2</div>
-        <div><div class="rank-name">Third Gen Coffee</div><div class="rank-note">Cane Break · Golden Spice · Cinnamon Roll</div></div>
+      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Show signature drinks</span>
+      <div class="suggests">
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⭐</span>Cane Break (espresso + brown sugar)</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">✨</span>Golden Spice (honey, cinnamon, turmeric)</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🍥</span>Cinnamon Roll</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🧊</span>Frozen Cold Brew</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">💜</span>Lavender Latte</div>
       </div>
-      <div class="rank-item">
-        <div class="rank-num">3</div>
-        <div><div class="rank-name">Ome Calli Café</div><div class="rank-note">Alchemist · Salted Maple · wildest profiles</div></div>
-      </div>
-      <div class="rank-item">
-        <div class="rank-num">4</div>
-        <div><div class="rank-name">Blue Door</div><div class="rank-note">Honey Cinnamon · solid classics on the water</div></div>
-      </div>
-      <div class="rank-item">
-        <div class="rank-num">5</div>
-        <div><div class="rank-name">Serenity Sips</div><div class="rank-note">Matcha Fog · wellness-forward (no Sunday)</div></div>
-      </div>
-      <div class="rank-item">
-        <div class="rank-num">6</div>
-        <div><div class="rank-name">Bluestone Lane</div><div class="rank-note">Iced flat white · Aussie espresso purist</div></div>
+      <div class="log-section">
+        <div class="log-header">
+          <span class="log-title">Logged</span>
+          <button class="log-add-btn" onclick="openSheet('thirdgen')">+ Log a drink</button>
+        </div>
+        <div class="log-entries" id="log-thirdgen"></div>
       </div>
     </div>
   </div>
 
-  <!-- 16. Quick hours reference -->
-  <div class="slide">
+  <!-- 3: Ome Calli -->
+  <div class="slide" id="slide-3">
     <div class="slide-inner">
-      <span class="tag">Weekend Quick Reference</span>
-      <h2>Saturday Hours</h2>
-      <div class="grid-2">
-        <div class="grid-cell"><div class="grid-cell-label">Conduit</div><div class="grid-cell-value">7:30am–3pm</div></div>
-        <div class="grid-cell"><div class="grid-cell-label">Third Gen</div><div class="grid-cell-value">7am–5pm</div></div>
-        <div class="grid-cell"><div class="grid-cell-label">Ome Calli</div><div class="grid-cell-value">7am–6pm</div></div>
-        <div class="grid-cell"><div class="grid-cell-label">Serenity Sips</div><div class="grid-cell-value">9am–3pm</div></div>
-        <div class="grid-cell"><div class="grid-cell-label">Blue Door</div><div class="grid-cell-value">7am–5pm</div></div>
-        <div class="grid-cell"><div class="grid-cell-label">Bluestone Lane</div><div class="grid-cell-value">7:30am–5pm</div></div>
+      <div class="kicker">Stop 3 of 6 · Grogan's Mill</div>
+      <h2>Ome Calli Café 🍄</h2>
+      <div class="hours">
+        <div class="hour-row"><span class="hday">Fri</span><span>7am – 6pm</span></div>
+        <div class="hour-row"><span class="hday">Sat</span><span>7am – 6pm</span></div>
+        <div class="hour-row"><span class="hday">Sun</span><span>8am – 4pm</span></div>
+      </div>
+      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Show signature drinks</span>
+      <div class="suggests">
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⭐</span>The Alchemist (cacao, reishi, espresso)</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🍁</span>The Salted Maple</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🍄</span>Mushroom Coffee</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🌱</span>Organic Iced Latte</div>
+      </div>
+      <div class="log-section">
+        <div class="log-header">
+          <span class="log-title">Logged</span>
+          <button class="log-add-btn" onclick="openSheet('omecalli')">+ Log a drink</button>
+        </div>
+        <div class="log-entries" id="log-omecalli"></div>
       </div>
     </div>
   </div>
 
-  <!-- 17. Sunday hours -->
-  <div class="slide">
+  <!-- 4: Serenity Sips -->
+  <div class="slide" id="slide-4">
     <div class="slide-inner">
-      <span class="tag">Weekend Quick Reference</span>
-      <h2>Sunday Hours</h2>
-      <div class="grid-2">
-        <div class="grid-cell"><div class="grid-cell-label">Conduit</div><div class="grid-cell-value">7:30am–3pm</div></div>
-        <div class="grid-cell"><div class="grid-cell-label">Third Gen</div><div class="grid-cell-value">8am–3pm</div></div>
-        <div class="grid-cell"><div class="grid-cell-label">Ome Calli</div><div class="grid-cell-value">8am–4pm</div></div>
-        <div class="grid-cell"><div class="grid-cell-label" style="color:#3a3a3a">Serenity Sips</div><div class="grid-cell-value" style="color:#333">Closed ✗</div></div>
-        <div class="grid-cell"><div class="grid-cell-label">Blue Door</div><div class="grid-cell-value">8am–5pm</div></div>
-        <div class="grid-cell"><div class="grid-cell-label">Bluestone Lane</div><div class="grid-cell-value">7:30am–5pm</div></div>
+      <div class="kicker">Stop 4 of 6 · Shenandoah</div>
+      <h2>Serenity Sips 🌿</h2>
+      <div class="hours">
+        <div class="hour-row"><span class="hday">Fri</span><span>9am – 7pm</span></div>
+        <div class="hour-row"><span class="hday">Sat</span><span>9am – 3pm</span></div>
+        <div class="hour-row"><span class="hday">Sun</span><span class="hclosed">Closed</span></div>
+      </div>
+      <p style="font-size:12px;color:#444;margin-bottom:12px;">⚠️ Closed Sundays — wellness & matcha forward</p>
+      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Show signature drinks</span>
+      <div class="suggests">
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⭐</span>Matcha Fog (lavender + vanilla)</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🍋</span>Lifted Lemonade</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⚡</span>Magic Magnesium Lemonade</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">💜</span>Iced Lavender Matcha</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">❤️</span>Beetroot Cacao Latte</div>
+      </div>
+      <div class="log-section">
+        <div class="log-header">
+          <span class="log-title">Logged</span>
+          <button class="log-add-btn" onclick="openSheet('serenity')">+ Log a drink</button>
+        </div>
+        <div class="log-entries" id="log-serenity"></div>
       </div>
     </div>
   </div>
 
-  <!-- 18. End -->
-  <div class="slide slide-title">
+  <!-- 5: Blue Door -->
+  <div class="slide" id="slide-5">
     <div class="slide-inner">
-      <div class="callout">☕</div>
-      <h1 style="margin-top:16px">Go get it.</h1>
-      <p class="slide-subtitle">The Woodlands Coffee Guide<br>Compiled March 2026</p>
+      <div class="kicker">Stop 5 of 6 · The Waterway</div>
+      <h2>Blue Door Coffee 🚪</h2>
+      <div class="hours">
+        <div class="hour-row"><span class="hday">Fri</span><span>7am – 5pm</span></div>
+        <div class="hour-row"><span class="hday">Sat</span><span>7am – 5pm</span></div>
+        <div class="hour-row"><span class="hday">Sun</span><span>8am – 5pm</span></div>
+      </div>
+      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Show signature drinks</span>
+      <div class="suggests">
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⭐</span>Honey Cinnamon Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🧊</span>Iced Latte</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🌿</span>Seasonal Special</div>
+      </div>
+      <div class="log-section">
+        <div class="log-header">
+          <span class="log-title">Logged</span>
+          <button class="log-add-btn" onclick="openSheet('bluedoor')">+ Log a drink</button>
+        </div>
+        <div class="log-entries" id="log-bluedoor"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6: Bluestone Lane -->
+  <div class="slide" id="slide-6">
+    <div class="slide-inner">
+      <div class="kicker">Stop 6 of 6 · Lake Woodlands Dr</div>
+      <h2>Bluestone Lane 🇦🇺</h2>
+      <div class="hours">
+        <div class="hour-row"><span class="hday">Fri</span><span>7:30am – 5pm</span></div>
+        <div class="hour-row"><span class="hday">Sat</span><span>7:30am – 5pm</span></div>
+        <div class="hour-row"><span class="hday">Sun</span><span>7:30am – 5pm</span></div>
+      </div>
+      <span class="suggest-toggle" onclick="toggleSuggests(this)">▸ Show signature drinks</span>
+      <div class="suggests">
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">⭐</span>Iced Flat White</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🥤</span>Cold-Pressed Juice</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🌿</span>Wellness Drink</div>
+        <div class="suggest-pill" onclick="fillDrink(this)"><span class="sp-icon">🧊</span>Iced Latte</div>
+      </div>
+      <div class="log-section">
+        <div class="log-header">
+          <span class="log-title">Logged</span>
+          <button class="log-add-btn" onclick="openSheet('bluestone')">+ Log a drink</button>
+        </div>
+        <div class="log-entries" id="log-bluestone"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7: Scorecard -->
+  <div class="slide" id="slide-7">
+    <div class="slide-inner">
+      <div class="kicker">The Verdict</div>
+      <h2>Scorecard 🏆</h2>
+      <div id="scorecard"></div>
+      <button onclick="clearAll()" style="margin-top:24px;background:none;border:1px solid #222;color:#333;padding:8px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">Clear all logs</button>
     </div>
   </div>
 
 </div>
 
+<!-- Nav -->
 <nav id="nav">
-  <button class="nav-btn" id="btn-prev" onclick="go(-1)" aria-label="Previous">←</button>
-  <span id="counter">1 / 1</span>
-  <button class="nav-btn" id="btn-next" onclick="go(1)" aria-label="Next">→</button>
+  <button class="nbtn" id="btn-prev" onclick="go(-1)">←</button>
+  <span id="counter">1 / 8</span>
+  <button class="nbtn" id="btn-next" onclick="go(1)">→</button>
 </nav>
 
+<!-- Bottom Sheet -->
+<div id="sheet-overlay" onclick="closeSheet(event)">
+  <div id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="sheet-title">Log a drink</div>
+
+    <div class="person-toggle">
+      <button class="ptog active" id="ptog0" onclick="selectPerson(0)">
+        <span id="ptog0-label">Chelsea</span>
+      </button>
+      <button class="ptog" id="ptog1" onclick="selectPerson(1)">
+        <span id="ptog1-label">Sister</span>
+      </button>
+    </div>
+
+    <div class="drink-label">What did you get?</div>
+    <input class="drink-input" id="drink-input" placeholder="Drink name…" oninput="checkSave()">
+    <div class="quick-pills" id="quick-pills"></div>
+
+    <div class="drink-label">How was it?</div>
+    <div class="rating-row">
+      <button class="rat-btn" id="rat-good" onclick="selectRating('good')">👍 <span>Good</span></button>
+      <button class="rat-btn" id="rat-bad"  onclick="selectRating('bad')">👎 <span>Bad</span></button>
+    </div>
+
+    <button class="save-btn" id="save-btn" onclick="saveLog()" disabled>Save</button>
+  </div>
+</div>
+
 <script>
-  const slides = document.querySelectorAll('.slide');
-  let cur = 0, startX = 0;
+const SHOPS = {
+  conduit:  { name: 'Conduit Coffee',   suggests: ['Miso Caramel Latte','Sea Salt Cacao','Call Me Old Fashioned','Mint Royale','Lavender Latte','Cold Brew'] },
+  thirdgen: { name: 'Third Gen Coffee', suggests: ['Cane Break','Golden Spice','Cinnamon Roll','Frozen Cold Brew','Lavender Latte'] },
+  omecalli: { name: 'Ome Calli Café',   suggests: ['The Alchemist','The Salted Maple','Mushroom Coffee','Organic Iced Latte'] },
+  serenity: { name: 'Serenity Sips',    suggests: ['Matcha Fog','Lifted Lemonade','Magic Magnesium','Iced Lavender Matcha','Beetroot Cacao Latte'] },
+  bluedoor: { name: 'Blue Door Coffee', suggests: ['Honey Cinnamon Latte','Iced Latte','Seasonal Special'] },
+  bluestone:{ name: 'Bluestone Lane',   suggests: ['Iced Flat White','Cold-Pressed Juice','Wellness Drink','Iced Latte'] },
+};
+const SLIDES = 8;
+let cur = 0, startX = 0;
+let sheetShop = null, sheetPerson = 0, sheetRating = null;
 
-  function render() {
-    slides.forEach((s, i) => {
-      s.classList.remove('active', 'prev');
-      if (i === cur) s.classList.add('active');
-      else if (i < cur) s.classList.add('prev');
-    });
-    document.getElementById('counter').textContent = `${cur + 1} / ${slides.length}`;
-    document.getElementById('progress-fill').style.width = `${((cur + 1) / slides.length) * 100}%`;
-    document.getElementById('btn-prev').disabled = cur === 0;
-    document.getElementById('btn-next').disabled = cur === slides.length - 1;
+// ---- Data ----
+function getData() {
+  try { return JSON.parse(localStorage.getItem('wc-tour') || '{}'); } catch { return {}; }
+}
+function saveData(d) { localStorage.setItem('wc-tour', JSON.stringify(d)); }
+
+function getPeople() {
+  const d = getData();
+  return [d.p0 || 'Chelsea', d.p1 || 'Sister'];
+}
+
+function savePeople() {
+  const d = getData();
+  d.p0 = document.getElementById('name0').value || 'Chelsea';
+  d.p1 = document.getElementById('name1').value || 'Sister';
+  document.getElementById('av0').textContent = d.p0[0].toUpperCase();
+  document.getElementById('av1').textContent = d.p1[0].toUpperCase();
+  saveData(d);
+  renderAll();
+}
+
+// ---- Render logs ----
+function renderShop(shopId) {
+  const d = getData();
+  const logs = (d.logs || {})[shopId] || [];
+  const people = getPeople();
+  const el = document.getElementById('log-' + shopId);
+  if (!el) return;
+  if (logs.length === 0) {
+    el.innerHTML = '<div class="empty-log">Nothing logged yet.</div>';
+    return;
   }
+  el.innerHTML = logs.map((entry, i) => `
+    <div class="log-entry">
+      <div class="le-avatar le-p${entry.person}"><b>${people[entry.person][0].toUpperCase()}</b></div>
+      <div class="le-drink">
+        <div style="font-size:13px;font-weight:600">${entry.drink}</div>
+        <div style="font-size:11px;color:var(--muted)">${people[entry.person]}</div>
+      </div>
+      <span class="le-rating">${entry.rating === 'good' ? '👍' : '👎'}</span>
+      <button class="le-del" onclick="deleteLog('${shopId}', ${i})">×</button>
+    </div>
+  `).join('');
+}
 
-  function go(dir) {
-    const next = cur + dir;
-    if (next >= 0 && next < slides.length) { cur = next; render(); }
-  }
+function renderAll() {
+  Object.keys(SHOPS).forEach(renderShop);
+  renderScorecard();
+  // Update person toggle labels
+  const people = getPeople();
+  document.getElementById('ptog0-label').textContent = people[0];
+  document.getElementById('ptog1-label').textContent = people[1];
+}
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') go(-1);
+function renderScorecard() {
+  const d = getData();
+  const logs = d.logs || {};
+  const people = getPeople();
+  let html = '';
+
+  Object.entries(SHOPS).forEach(([id, shop]) => {
+    const entries = logs[id] || [];
+    html += `<div class="score-shop"><div class="score-shop-name">${shop.name}</div>`;
+    if (entries.length === 0) {
+      html += `<div class="score-empty">Not visited yet</div>`;
+    } else {
+      entries.forEach(e => {
+        html += `
+          <div class="score-entry">
+            <div class="le-avatar le-p${e.person}" style="width:26px;height:26px;font-size:11px">${people[e.person][0].toUpperCase()}</div>
+            <div style="flex:1;font-size:13px">${e.drink}</div>
+            <span style="font-size:18px">${e.rating === 'good' ? '👍' : '👎'}</span>
+          </div>`;
+      });
+    }
+    html += `</div>`;
   });
 
-  document.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
-  document.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - startX;
-    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
-  });
+  // Quick summary
+  let totalGood = 0, totalBad = 0;
+  const pGood = [0, 0], pBad = [0, 0];
+  Object.values(logs).forEach(shop => shop.forEach(e => {
+    if (e.rating === 'good') { totalGood++; pGood[e.person]++; }
+    else { totalBad++; pBad[e.person]++; }
+  }));
 
+  if (totalGood + totalBad > 0) {
+    html = `<div style="display:flex;gap:10px;margin-bottom:20px">
+      <div style="flex:1;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:26px;font-weight:800;color:var(--good)">${totalGood}</div>
+        <div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Good</div>
+      </div>
+      <div style="flex:1;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:26px;font-weight:800;color:var(--bad)">${totalBad}</div>
+        <div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Bad</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:20px">
+      ${[0,1].map(p => `
+        <div style="flex:1;background:var(--surface);border-radius:10px;padding:12px">
+          <div class="le-avatar le-p${p}" style="margin-bottom:8px;width:28px;height:28px;font-size:12px">${people[p][0].toUpperCase()}</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">${people[p]}</div>
+          <div style="font-size:12px;color:var(--muted)">👍 ${pGood[p]} · 👎 ${pBad[p]}</div>
+        </div>`).join('')}
+    </div>` + html;
+  }
+
+  document.getElementById('scorecard').innerHTML = html || '<p style="color:#333;font-size:14px">No drinks logged yet. Start swiping!</p>';
+}
+
+// ---- Delete ----
+function deleteLog(shopId, idx) {
+  const d = getData();
+  if (!d.logs) return;
+  d.logs[shopId].splice(idx, 1);
+  saveData(d);
+  renderShop(shopId);
+  renderScorecard();
+}
+
+function clearAll() {
+  if (!confirm('Clear all logs?')) return;
+  const d = getData();
+  d.logs = {};
+  saveData(d);
+  renderAll();
+}
+
+// ---- Sheet ----
+function openSheet(shopId) {
+  sheetShop = shopId;
+  sheetPerson = 0;
+  sheetRating = null;
+  const people = getPeople();
+  document.getElementById('sheet-title').textContent = SHOPS[shopId].name;
+  document.getElementById('drink-input').value = '';
+  document.getElementById('rat-good').className = 'rat-btn';
+  document.getElementById('rat-bad').className = 'rat-btn';
+  document.getElementById('save-btn').disabled = true;
+  document.getElementById('ptog0').classList.add('active');
+  document.getElementById('ptog1').classList.remove('active');
+  document.getElementById('ptog0-label').textContent = people[0];
+  document.getElementById('ptog1-label').textContent = people[1];
+
+  // Quick pills from this shop's suggestions
+  const pills = SHOPS[shopId].suggests.map(s =>
+    `<button class="qpill" onclick="pickPill('${s.replace(/'/g,"\\'")}')">+ ${s}</button>`
+  ).join('');
+  document.getElementById('quick-pills').innerHTML = pills;
+
+  document.getElementById('sheet-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('drink-input').focus(), 350);
+}
+
+function closeSheet(e) {
+  if (e && e.target !== document.getElementById('sheet-overlay')) return;
+  document.getElementById('sheet-overlay').classList.remove('open');
+}
+
+function selectPerson(p) {
+  sheetPerson = p;
+  document.getElementById('ptog0').classList.toggle('active', p === 0);
+  document.getElementById('ptog1').classList.toggle('active', p === 1);
+}
+
+function selectRating(r) {
+  sheetRating = r;
+  document.getElementById('rat-good').className = 'rat-btn' + (r === 'good' ? ' good-sel' : '');
+  document.getElementById('rat-bad').className  = 'rat-btn' + (r === 'bad'  ? ' bad-sel'  : '');
+  checkSave();
+}
+
+function pickPill(name) {
+  document.getElementById('drink-input').value = name;
+  checkSave();
+}
+
+function checkSave() {
+  const val = document.getElementById('drink-input').value.trim();
+  document.getElementById('save-btn').disabled = !(val && sheetRating);
+}
+
+function saveLog() {
+  const drink = document.getElementById('drink-input').value.trim();
+  if (!drink || !sheetRating) return;
+  const d = getData();
+  if (!d.logs) d.logs = {};
+  if (!d.logs[sheetShop]) d.logs[sheetShop] = [];
+  d.logs[sheetShop].push({ person: sheetPerson, drink, rating: sheetRating, ts: Date.now() });
+  saveData(d);
+  document.getElementById('sheet-overlay').classList.remove('open');
+  renderShop(sheetShop);
+  renderScorecard();
+}
+
+// ---- Suggest toggle ----
+function toggleSuggests(el) {
+  const s = el.nextElementSibling;
+  const open = s.classList.toggle('open');
+  el.textContent = (open ? '▾ ' : '▸ ') + 'Show signature drinks';
+}
+
+function fillDrink(el) {
+  // Used from suggest pills in slides (not sheet) — opens sheet with drink pre-filled
+  // Find parent slide's shop
+  const slide = el.closest('.slide');
+  const logSection = slide.querySelector('[id^="log-"]');
+  if (!logSection) return;
+  const shopId = logSection.id.replace('log-', '');
+  openSheet(shopId);
+  setTimeout(() => {
+    const name = el.textContent.replace(/^[^\w]+/, '').trim();
+    document.getElementById('drink-input').value = name;
+    checkSave();
+  }, 50);
+}
+
+// ---- Deck nav ----
+function render() {
+  document.querySelectorAll('.slide').forEach((s, i) => {
+    s.classList.remove('active', 'prev');
+    if (i === cur) s.classList.add('active');
+    else if (i < cur) s.classList.add('prev');
+  });
+  document.getElementById('counter').textContent = `${cur + 1} / ${SLIDES}`;
+  document.getElementById('progress-fill').style.width = `${((cur + 1) / SLIDES) * 100}%`;
+  document.getElementById('btn-prev').disabled = cur === 0;
+  document.getElementById('btn-next').disabled = cur === SLIDES - 1;
+  if (cur === SLIDES - 1) renderScorecard();
+}
+
+function go(dir) {
+  if (document.getElementById('sheet-overlay').classList.contains('open')) return;
+  const n = cur + dir;
+  if (n >= 0 && n < SLIDES) { cur = n; render(); }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') go(-1);
+});
+
+document.addEventListener('touchstart', e => {
+  if (document.getElementById('sheet-overlay').classList.contains('open')) return;
+  startX = e.touches[0].clientX;
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+  if (document.getElementById('sheet-overlay').classList.contains('open')) return;
+  const dx = e.changedTouches[0].clientX - startX;
+  if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+});
+
+// ---- Init ----
+(function init() {
+  const d = getData();
+  if (d.p0) document.getElementById('name0').value = d.p0;
+  if (d.p1) document.getElementById('name1').value = d.p1;
+  document.getElementById('av0').textContent = (d.p0 || 'Chelsea')[0].toUpperCase();
+  document.getElementById('av1').textContent = (d.p1 || 'Sister')[0].toUpperCase();
+  renderAll();
   render();
+})();
 </script>
 </body>
 </html>
