@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Woodlands Coffee Guide</title>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --accent: #ffffff;
+    --muted: #666;
+    --text: #f0f0f0;
+    --tag: #2a2a2a;
+    --radius: 12px;
+    --slide-max: 680px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    touch-action: pan-y;
+  }
+
+  #progress-bar { height: 3px; background: var(--muted); flex-shrink: 0; }
+  #progress-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+
+  #deck { flex: 1; overflow: hidden; position: relative; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 32px 24px;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.35s ease;
+    overflow-y: auto;
+  }
+  .slide.active { opacity: 1; transform: translateX(0); }
+  .slide.prev { opacity: 0; transform: translateX(-100%); }
+
+  .slide-inner { width: 100%; max-width: var(--slide-max); }
+  .slide-title .slide-inner { text-align: center; }
+
+  .slide-kicker {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 16px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 7vw, 52px); font-weight: 700;
+    line-height: 1.1; letter-spacing: -0.02em;
+  }
+  h2 {
+    font-size: clamp(20px, 5vw, 32px); font-weight: 700;
+    line-height: 1.2; letter-spacing: -0.02em; margin-bottom: 18px;
+  }
+
+  .slide-subtitle {
+    font-size: clamp(14px, 3vw, 17px); color: var(--muted);
+    margin-top: 12px; line-height: 1.5;
+  }
+
+  p { font-size: clamp(14px, 3.2vw, 17px); line-height: 1.65; margin-bottom: 10px; }
+
+  ul { padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  li {
+    font-size: clamp(13px, 3vw, 16px); line-height: 1.5;
+    padding: 11px 14px; background: var(--surface); border-radius: 8px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  li::before { content: '→'; color: var(--muted); flex-shrink: 0; margin-top: 1px; }
+
+  .tag {
+    display: inline-block; background: var(--tag); border-radius: 6px;
+    padding: 4px 10px; font-size: 12px; font-weight: 500;
+    color: var(--muted); margin-bottom: 14px;
+  }
+
+  .callout {
+    font-size: clamp(32px, 9vw, 64px); font-weight: 800;
+    letter-spacing: -0.03em; line-height: 1; margin-bottom: 8px;
+  }
+  .callout-label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+
+  blockquote {
+    border-left: 3px solid var(--accent); padding: 12px 16px;
+    font-size: clamp(14px, 3.2vw, 18px); font-style: italic;
+    line-height: 1.6; color: #ccc; margin: 12px 0;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+  .grid-cell { background: var(--surface); border-radius: var(--radius); padding: 14px; }
+  .grid-cell-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 5px; }
+  .grid-cell-value { font-size: clamp(13px, 2.8vw, 15px); font-weight: 600; line-height: 1.4; }
+
+  .hours-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #1e1e1e; font-size: 14px; }
+  .hours-row:last-child { border-bottom: none; }
+  .hours-day { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .hours-closed { color: #444; }
+
+  .rank-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border-radius: 8px; margin-bottom: 8px; }
+  .rank-num { font-size: 18px; font-weight: 800; color: var(--muted); width: 28px; flex-shrink: 0; }
+  .rank-name { font-size: 15px; font-weight: 600; }
+  .rank-note { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  #nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; flex-shrink: 0; border-top: 1px solid #1a1a1a;
+  }
+  .nav-btn {
+    background: var(--surface); border: none; color: var(--text);
+    width: 44px; height: 44px; border-radius: 50%; font-size: 20px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, opacity 0.15s; -webkit-tap-highlight-color: transparent;
+  }
+  .nav-btn:disabled { opacity: 0.2; cursor: default; }
+  .nav-btn:not(:disabled):active { background: #2a2a2a; }
+  #counter { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: 0.05em; }
+</style>
+</head>
+<body>
+
+<div id="progress-bar"><div id="progress-fill"></div></div>
+
+<div id="deck">
+
+  <!-- 1. Title -->
+  <div class="slide slide-title">
+    <div class="slide-inner">
+      <div class="slide-kicker">The Woodlands, TX</div>
+      <h1>Coffee Guide</h1>
+      <p class="slide-subtitle">Best spots, hours & signature iced drinks<br>Fri · Sat · Sun</p>
+    </div>
+  </div>
+
+  <!-- 2. The lineup -->
+  <div class="slide">
+    <div class="slide-inner">
+      <div class="slide-kicker">6 Shops</div>
+      <h2>The Lineup</h2>
+      <ul>
+        <li>Conduit Coffee — Panther Creek</li>
+        <li>Third Gen Coffee — Grogan's Park</li>
+        <li>Ome Calli Café — Grogan's Mill Village</li>
+        <li>Serenity Sips — I-45 N (Shenandoah)</li>
+        <li>Blue Door Coffee — The Waterway</li>
+        <li>Bluestone Lane — Lake Woodlands Dr</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 3. Conduit Coffee -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">☕ #1 for Iced</span>
+      <h2>Conduit Coffee</h2>
+      <div class="hours-row"><span class="hours-day">Friday</span><span>7:30am – 3pm</span></div>
+      <div class="hours-row"><span class="hours-day">Saturday</span><span>7:30am – 3pm</span></div>
+      <div class="hours-row"><span class="hours-day">Sunday</span><span>7:30am – 3pm</span></div>
+      <p style="margin-top:14px; color:#888; font-size:13px;">27140 Glen Loch Dr · LGBTQIA+ owned · plant-filled vibes</p>
+    </div>
+  </div>
+
+  <!-- 4. Conduit drinks -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">Conduit Signature Drinks</span>
+      <h2>What to Order</h2>
+      <ul>
+        <li><strong>Miso Caramel Latte</strong> — the crowd favorite</li>
+        <li><strong>Sea Salt Cacao</strong> — rich & subtle</li>
+        <li><strong>Call Me Old Fashioned</strong> — named house drink</li>
+        <li><strong>Mint Royale</strong> — warm-spiced</li>
+        <li>Lavender · Local Honey · Cold Brew</li>
+      </ul>
+      <p style="margin-top:12px; color:#555; font-size:12px;">All syrups house-made with evaporated cane sugar. Seasonal rotations.</p>
+    </div>
+  </div>
+
+  <!-- 5. Third Gen -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">Honduran Farm Beans</span>
+      <h2>Third Gen Coffee</h2>
+      <div class="hours-row"><span class="hours-day">Friday</span><span>7am – 5pm</span></div>
+      <div class="hours-row"><span class="hours-day">Saturday</span><span>7am – 5pm</span></div>
+      <div class="hours-row"><span class="hours-day">Sunday</span><span>8am – 3pm</span></div>
+      <p style="margin-top:14px; color:#888; font-size:13px;">25136 Grogan's Park Dr · family-owned since 2017</p>
+    </div>
+  </div>
+
+  <!-- 6. Third Gen drinks -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">Third Gen Signature Drinks</span>
+      <h2>What to Order</h2>
+      <ul>
+        <li><strong>Cane Break</strong> — espresso + brown sugar</li>
+        <li><strong>Golden Spice</strong> — honey, cinnamon, turmeric</li>
+        <li><strong>Cinnamon Roll</strong> — cinnamon, vanilla, white choc</li>
+        <li>Frozen cold brew · Lavender latte · Mocha</li>
+      </ul>
+      <p style="margin-top:12px; color:#555; font-size:12px;">Beans sourced directly from their family farm in Honduras.</p>
+    </div>
+  </div>
+
+  <!-- 7. Ome Calli -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">Plant-Based · Mushroom Coffee</span>
+      <h2>Ome Calli Café</h2>
+      <div class="hours-row"><span class="hours-day">Friday</span><span>7am – 6pm</span></div>
+      <div class="hours-row"><span class="hours-day">Saturday</span><span>7am – 6pm</span></div>
+      <div class="hours-row"><span class="hours-day">Sunday</span><span>8am – 4pm</span></div>
+      <p style="margin-top:14px; color:#888; font-size:13px;">2260 Buckthorne Pl #179 · organic, vegan-friendly, family-run</p>
+    </div>
+  </div>
+
+  <!-- 8. Ome Calli drinks -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">Ome Calli Signature Drinks</span>
+      <h2>What to Order</h2>
+      <ul>
+        <li><strong>The Alchemist</strong> — cacao, cinnamon, reishi, espresso, agave</li>
+        <li><strong>The Salted Maple</strong> — espresso, maple syrup, Himalayan salt</li>
+        <li>Mushroom coffee · Organic iced lattes</li>
+      </ul>
+      <p style="margin-top:12px; color:#555; font-size:12px;">Most unique flavor profiles on this list. Earthy, creative, functional.</p>
+    </div>
+  </div>
+
+  <!-- 9. Serenity Sips -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">Wellness Café · Matcha Forward</span>
+      <h2>Serenity Sips</h2>
+      <div class="hours-row"><span class="hours-day">Friday</span><span>9am – 7pm</span></div>
+      <div class="hours-row"><span class="hours-day">Saturday</span><span>9am – 3pm</span></div>
+      <div class="hours-row"><span class="hours-day">Sunday</span><span class="hours-closed">Closed</span></div>
+      <p style="margin-top:14px; color:#888; font-size:13px;">26411 I-45 N, Shenandoah · ⚠️ Closed Sundays</p>
+    </div>
+  </div>
+
+  <!-- 10. Serenity drinks -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">Serenity Sips Signatures</span>
+      <h2>What to Order</h2>
+      <ul>
+        <li><strong>Matcha Fog</strong> — lavender + vanilla matcha ($7.50)</li>
+        <li><strong>Lifted Lemonade</strong> — ($6.99)</li>
+        <li><strong>Magic Magnesium</strong> — functional lemonade</li>
+        <li>Iced Lavender Matcha · Beetroot Cacao Latte</li>
+      </ul>
+      <p style="margin-top:12px; color:#555; font-size:12px;">Less coffee-forward, more wellness. Everything made fresh to order.</p>
+    </div>
+  </div>
+
+  <!-- 11. Blue Door -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">Waterway Location</span>
+      <h2>Blue Door Coffee</h2>
+      <div class="hours-row"><span class="hours-day">Friday</span><span>7am – 5pm</span></div>
+      <div class="hours-row"><span class="hours-day">Saturday</span><span>7am – 5pm</span></div>
+      <div class="hours-row"><span class="hours-day">Sunday</span><span>8am – 5pm</span></div>
+      <p style="margin-top:14px; color:#888; font-size:13px;">21 Waterway Ave · inside Woodlands Waterway Marriott · validates parking</p>
+    </div>
+  </div>
+
+  <!-- 12. Blue Door drinks -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">Blue Door Drinks</span>
+      <h2>What to Order</h2>
+      <ul>
+        <li><strong>Honey Cinnamon Latte</strong> — local favorite</li>
+        <li>Rotating seasonal iced lattes</li>
+        <li>Standard iced espresso drinks, well-executed</li>
+      </ul>
+      <p style="margin-top:12px; color:#555; font-size:12px;">Solid classics. Scenic waterway spot. Great people-watching.</p>
+    </div>
+  </div>
+
+  <!-- 13. Bluestone Lane -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">Australian Café Vibes</span>
+      <h2>Bluestone Lane</h2>
+      <div class="hours-row"><span class="hours-day">Friday</span><span>7:30am – 5pm</span></div>
+      <div class="hours-row"><span class="hours-day">Saturday</span><span>7:30am – 5pm</span></div>
+      <div class="hours-row"><span class="hours-day">Sunday</span><span>7:30am – 5pm</span></div>
+      <p style="margin-top:14px; color:#888; font-size:13px;">1900 Lake Woodlands Dr · next to Total Wine</p>
+    </div>
+  </div>
+
+  <!-- 14. Bluestone drinks -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">Bluestone Lane Drinks</span>
+      <h2>What to Order</h2>
+      <ul>
+        <li><strong>Iced Flat White</strong> — their calling card</li>
+        <li>Cold-pressed juices · wellness drinks</li>
+        <li>Avocado smash & banana bread if you're eating</li>
+      </ul>
+      <p style="margin-top:12px; color:#555; font-size:12px;">Not a flavor-latte kind of place — premium espresso done right.</p>
+    </div>
+  </div>
+
+  <!-- 15. Iced coffee ranking -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">For the Iced Coffee Lover</span>
+      <h2>Ranked</h2>
+      <div class="rank-item">
+        <div class="rank-num">1</div>
+        <div><div class="rank-name">Conduit Coffee</div><div class="rank-note">Miso Caramel · Sea Salt Cacao · house syrups</div></div>
+      </div>
+      <div class="rank-item">
+        <div class="rank-num">2</div>
+        <div><div class="rank-name">Third Gen Coffee</div><div class="rank-note">Cane Break · Golden Spice · Cinnamon Roll</div></div>
+      </div>
+      <div class="rank-item">
+        <div class="rank-num">3</div>
+        <div><div class="rank-name">Ome Calli Café</div><div class="rank-note">Alchemist · Salted Maple · wildest profiles</div></div>
+      </div>
+      <div class="rank-item">
+        <div class="rank-num">4</div>
+        <div><div class="rank-name">Blue Door</div><div class="rank-note">Honey Cinnamon · solid classics on the water</div></div>
+      </div>
+      <div class="rank-item">
+        <div class="rank-num">5</div>
+        <div><div class="rank-name">Serenity Sips</div><div class="rank-note">Matcha Fog · wellness-forward (no Sunday)</div></div>
+      </div>
+      <div class="rank-item">
+        <div class="rank-num">6</div>
+        <div><div class="rank-name">Bluestone Lane</div><div class="rank-note">Iced flat white · Aussie espresso purist</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 16. Quick hours reference -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">Weekend Quick Reference</span>
+      <h2>Saturday Hours</h2>
+      <div class="grid-2">
+        <div class="grid-cell"><div class="grid-cell-label">Conduit</div><div class="grid-cell-value">7:30am–3pm</div></div>
+        <div class="grid-cell"><div class="grid-cell-label">Third Gen</div><div class="grid-cell-value">7am–5pm</div></div>
+        <div class="grid-cell"><div class="grid-cell-label">Ome Calli</div><div class="grid-cell-value">7am–6pm</div></div>
+        <div class="grid-cell"><div class="grid-cell-label">Serenity Sips</div><div class="grid-cell-value">9am–3pm</div></div>
+        <div class="grid-cell"><div class="grid-cell-label">Blue Door</div><div class="grid-cell-value">7am–5pm</div></div>
+        <div class="grid-cell"><div class="grid-cell-label">Bluestone Lane</div><div class="grid-cell-value">7:30am–5pm</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 17. Sunday hours -->
+  <div class="slide">
+    <div class="slide-inner">
+      <span class="tag">Weekend Quick Reference</span>
+      <h2>Sunday Hours</h2>
+      <div class="grid-2">
+        <div class="grid-cell"><div class="grid-cell-label">Conduit</div><div class="grid-cell-value">7:30am–3pm</div></div>
+        <div class="grid-cell"><div class="grid-cell-label">Third Gen</div><div class="grid-cell-value">8am–3pm</div></div>
+        <div class="grid-cell"><div class="grid-cell-label">Ome Calli</div><div class="grid-cell-value">8am–4pm</div></div>
+        <div class="grid-cell"><div class="grid-cell-label" style="color:#3a3a3a">Serenity Sips</div><div class="grid-cell-value" style="color:#333">Closed ✗</div></div>
+        <div class="grid-cell"><div class="grid-cell-label">Blue Door</div><div class="grid-cell-value">8am–5pm</div></div>
+        <div class="grid-cell"><div class="grid-cell-label">Bluestone Lane</div><div class="grid-cell-value">7:30am–5pm</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 18. End -->
+  <div class="slide slide-title">
+    <div class="slide-inner">
+      <div class="callout">☕</div>
+      <h1 style="margin-top:16px">Go get it.</h1>
+      <p class="slide-subtitle">The Woodlands Coffee Guide<br>Compiled March 2026</p>
+    </div>
+  </div>
+
+</div>
+
+<nav id="nav">
+  <button class="nav-btn" id="btn-prev" onclick="go(-1)" aria-label="Previous">←</button>
+  <span id="counter">1 / 1</span>
+  <button class="nav-btn" id="btn-next" onclick="go(1)" aria-label="Next">→</button>
+</nav>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  let cur = 0, startX = 0;
+
+  function render() {
+    slides.forEach((s, i) => {
+      s.classList.remove('active', 'prev');
+      if (i === cur) s.classList.add('active');
+      else if (i < cur) s.classList.add('prev');
+    });
+    document.getElementById('counter').textContent = `${cur + 1} / ${slides.length}`;
+    document.getElementById('progress-fill').style.width = `${((cur + 1) / slides.length) * 100}%`;
+    document.getElementById('btn-prev').disabled = cur === 0;
+    document.getElementById('btn-next').disabled = cur === slides.length - 1;
+  }
+
+  function go(dir) {
+    const next = cur + dir;
+    if (next >= 0 && next < slides.length) { cur = next; render(); }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') go(-1);
+  });
+
+  document.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+  });
+
+  render();
+</script>
+</body>
+</html>
