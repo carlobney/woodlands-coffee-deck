@@ -190,6 +190,13 @@
   .m-save  { background: #1a1a1a; color: #fff; border: none; padding: 14px 16px; border-radius: 10px; font-size: 18px; cursor: pointer; font-family: inherit; }
 
   hr.div { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* Add shop sheet */
+  .emoji-grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 20px 16px; }
+  .eg-btn { width: 44px; height: 44px; background: var(--surface2); border: 2px solid transparent; border-radius: 10px; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .eg-btn.sel { border-color: var(--accent); background: rgba(255,255,255,.07); }
+  .add-stop-btn { width: 100%; padding: 13px; background: none; border: 1px dashed #333; color: #555; font-size: 14px; font-weight: 600; border-radius: 10px; cursor: pointer; font-family: inherit; margin-top: 8px; }
+  .add-stop-btn:active { background: var(--surface); }
 </style>
 </head>
 <body>
@@ -225,7 +232,7 @@
         <input class="name-input" id="name1" placeholder="Person 2" value="Sister" oninput="savePeople()">
       </div>
       <hr class="div">
-      <div class="section-label">6 stops on the list</div>
+      <div class="section-label" id="stops-label">6 stops on the list</div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border-radius:10px;cursor:pointer" onclick="navTo('conduit')">
           <span style="color:var(--muted);font-size:13px;width:20px">1</span>
@@ -257,6 +264,8 @@
           <span style="font-size:15px;font-weight:600;flex:1">Bluestone Lane</span>
           <span style="color:#2a2a2a">→</span>
         </div>
+        <div id="custom-stops-home"></div>
+        <button class="add-stop-btn" onclick="openAddShop()">+ Add a stop</button>
       </div>
     </div>
 
@@ -435,6 +444,21 @@
       <button class="rat-btn" id="rat-bad"  onclick="selectRating('bad')">👎 <span>Bad</span></button>
     </div>
     <button class="save-btn" id="save-btn" onclick="saveLog()" disabled>Save</button>
+  </div>
+</div>
+
+<!-- Add Shop Sheet -->
+<div class="overlay" id="addshop-overlay" onclick="closeAddShop(event)">
+  <div class="sheet" id="addshop-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Add a Stop</div>
+    <div class="sheet-label">Shop name</div>
+    <input class="drink-input" id="newshop-name" placeholder="e.g. Golden Hour" oninput="checkNewShop()">
+    <div class="sheet-label">Pick an icon</div>
+    <div class="emoji-grid" id="emoji-grid"></div>
+    <div style="padding:0 20px 36px;display:flex;gap:10px">
+      <button class="save-btn" id="newshop-save" onclick="saveNewShop()" disabled style="margin:0;flex:1">Add Stop</button>
+    </div>
   </div>
 </div>
 
@@ -740,6 +764,115 @@ function toggleSuggests(el) {
   el.textContent = (open ? '▾ ' : '▸ ') + 'Signature drinks';
 }
 
+// ── Custom Shops ──
+const EMOJI_OPTIONS = ['☕','🧋','🍵','🌿','🍄','🧃','🍋','🥤','🫖','⭐','🌸','🔥','✨','🎯','💫','🍫','🧁','🍩'];
+let newShopEmoji = '☕';
+
+function getCustomShops() { return (getData().customShops || []); }
+
+function buildCustomShopView(shop) {
+  if (document.getElementById('view-' + shop.id)) return;
+  const stopNum = 6 + getCustomShops().findIndex(s => s.id === shop.id) + 1;
+  const div = document.createElement('div');
+  div.className = 'view';
+  div.id = 'view-' + shop.id;
+  div.innerHTML = `
+    <div class="shop-kicker">Custom Stop · Added by you
+      <button onclick="deleteCustomShop('${shop.id}')" style="float:right;background:none;border:none;color:#333;font-size:12px;cursor:pointer;font-family:inherit;">Remove stop</button>
+    </div>
+    <hr class="div" style="margin-top:0;margin-bottom:16px">
+    <div class="log-header" style="margin-top:4px">
+      <span class="log-title">Logged</span>
+      <button class="log-add-btn" onclick="openSheet('${shop.id}')">+ Log a drink</button>
+    </div>
+    <div class="log-entries" id="log-${shop.id}"></div>`;
+  document.getElementById('content').appendChild(div);
+}
+
+function loadCustomShops() {
+  const customs = getCustomShops();
+  customs.forEach(shop => {
+    if (!SHOPS[shop.id]) {
+      SHOPS[shop.id] = { name: shop.name, icon: shop.icon, stop: 6 + customs.indexOf(shop) + 1, suggests: [], custom: true };
+      HEADERS[shop.id] = { kicker: 'Custom Stop', title: shop.name };
+    }
+    buildCustomShopView(shop);
+  });
+  renderCustomStopsHome();
+}
+
+function renderCustomStopsHome() {
+  const customs = getCustomShops();
+  const el = document.getElementById('custom-stops-home');
+  if (!el) return;
+  el.innerHTML = customs.map((s, i) => `
+    <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border-radius:10px;cursor:pointer;margin-top:8px" onclick="navTo('${s.id}')">
+      <span style="color:var(--muted);font-size:13px;width:20px">${7 + i}</span>
+      <span style="font-size:18px">${s.icon}</span>
+      <span style="font-size:15px;font-weight:600;flex:1">${s.name}</span>
+      <span style="color:#2a2a2a">→</span>
+    </div>`).join('');
+  const total = 6 + customs.length;
+  const label = document.getElementById('stops-label');
+  if (label) label.textContent = `${total} stop${total !== 1 ? 's' : ''} on the list`;
+}
+
+function openAddShop() {
+  newShopEmoji = '☕';
+  document.getElementById('newshop-name').value = '';
+  document.getElementById('newshop-save').disabled = true;
+  document.getElementById('emoji-grid').innerHTML = EMOJI_OPTIONS.map(e =>
+    `<button class="eg-btn${e==='☕'?' sel':''}" onclick="pickEmoji(this,'${e}')">${e}</button>`
+  ).join('');
+  document.getElementById('addshop-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('newshop-name').focus(), 350);
+}
+
+function closeAddShop(e) {
+  if (e && e.target !== document.getElementById('addshop-overlay')) return;
+  document.getElementById('addshop-overlay').classList.remove('open');
+}
+
+function pickEmoji(btn, emoji) {
+  newShopEmoji = emoji;
+  document.querySelectorAll('#emoji-grid .eg-btn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+}
+
+function checkNewShop() {
+  document.getElementById('newshop-save').disabled = !document.getElementById('newshop-name').value.trim();
+}
+
+function saveNewShop() {
+  const name = document.getElementById('newshop-name').value.trim();
+  if (!name) return;
+  const id = 'custom-' + Date.now();
+  const d = getData();
+  if (!d.customShops) d.customShops = [];
+  d.customShops.push({ id, name, icon: newShopEmoji });
+  saveData(d);
+  SHOPS[id] = { name, icon: newShopEmoji, stop: 6 + d.customShops.length, suggests: [], custom: true };
+  HEADERS[id] = { kicker: 'Custom Stop', title: name };
+  buildCustomShopView({ id, name, icon: newShopEmoji });
+  renderCustomStopsHome();
+  document.getElementById('addshop-overlay').classList.remove('open');
+  navTo(id);
+}
+
+function deleteCustomShop(id) {
+  if (!confirm('Remove this stop and all its logs?')) return;
+  const d = getData();
+  d.customShops = (d.customShops||[]).filter(s => s.id !== id);
+  if (d.logs) delete d.logs[id];
+  saveData(d);
+  delete SHOPS[id];
+  delete HEADERS[id];
+  const el = document.getElementById('view-' + id);
+  if (el) el.remove();
+  renderCustomStopsHome();
+  navTo('setup');
+}
+
 // ── Canvas Scorecard ──
 const PCOLORS = ['#7c3aed','#0ea5e9'];
 const CW = 800, CP = 52;
@@ -902,6 +1035,7 @@ function saveImage() {
   const d=getData();
   if(d.p0){ document.getElementById('name0').value=d.p0; document.getElementById('av0').textContent=d.p0[0].toUpperCase(); }
   if(d.p1){ document.getElementById('name1').value=d.p1; document.getElementById('av1').textContent=d.p1[0].toUpperCase(); }
+  loadCustomShops();
   renderAll();
 })();
 </script>
