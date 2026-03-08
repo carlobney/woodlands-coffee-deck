@@ -136,6 +136,8 @@
   .le-drink-who  { font-size: 12px; color: var(--muted); margin-top: 1px; }
   .le-rating { font-size: 20px; }
   .le-del    { background: none; border: none; color: #2a2a2a; font-size: 18px; cursor: pointer; padding: 0 2px; }
+  .le-crown  { background: none; border: none; font-size: 16px; cursor: pointer; padding: 0 2px; opacity: .25; transition: opacity .15s, transform .15s; }
+  .le-crown.active { opacity: 1; transform: scale(1.15); }
   .empty-log { font-size: 14px; color: #2a2a2a; padding: 4px 0 8px; }
 
   /* Scorecard view */
@@ -558,16 +560,24 @@ function renderShop(shopId) {
   const el = document.getElementById('log-' + shopId);
   if (!el) return;
   if (!logs.length) { el.innerHTML = '<div class="empty-log">Nothing logged yet.</div>'; return; }
-  el.innerHTML = logs.map((e, i) => `
-    <div class="log-entry">
+  el.innerHTML = logs.map((e, i) => {
+    const crownIcon = e.rating === 'good' ? '⭐' : '💀';
+    const crownKey  = e.rating === 'good' ? 'best' : 'worst';
+    const isMarked  = e[crownKey] === true;
+    const crownTitle = e.rating === 'good'
+      ? (isMarked ? 'Best of tour ⭐' : 'Mark as best of tour')
+      : (isMarked ? 'Biggest miss 💀' : 'Mark as biggest miss');
+    return `<div class="log-entry">
       <div class="le-avatar ${e.person===0?'av0':'av1'}">${people[e.person][0].toUpperCase()}</div>
       <div class="le-drink">
         <div class="le-drink-name">${e.drink}</div>
-        <div class="le-drink-who">${people[e.person]}</div>
+        <div class="le-drink-who">${people[e.person]}${isMarked ? ' · <span style="color:'+(e.rating==='good'?'#facc15':'#ef4444')+';font-size:11px">'+crownTitle+'</span>' : ''}</div>
       </div>
       <span class="le-rating">${e.rating==='good'?'👍':'👎'}</span>
+      <button class="le-crown ${isMarked?'active':''}" title="${crownTitle}" onclick="markAs('${shopId}',${i},'${crownKey}')">${crownIcon}</button>
       <button class="le-del" onclick="deleteLog('${shopId}',${i})">×</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function renderScorecard() {
@@ -588,6 +598,20 @@ function renderScorecard() {
   // Per-shop
   let html = '';
   const visited = Object.entries(SHOPS).filter(([id]) => (logs[id]||[]).length);
+  // Best / worst callout
+  const allE = Object.entries(logs).flatMap(([id,es])=>es.map(e=>({...e,shop:SHOPS[id].name})));
+  const bestE  = allE.find(e=>e.best===true);
+  const worstE = allE.find(e=>e.worst===true);
+  let bwHtml = '';
+  if (bestE||worstE) {
+    bwHtml = `<div style="display:flex;gap:10px;margin-bottom:16px">`;
+    if (bestE)  bwHtml += `<div style="flex:1;background:rgba(250,204,21,.07);border:1px solid rgba(250,204,21,.2);border-radius:10px;padding:12px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">⭐ Best of Tour</div><div style="font-size:14px;font-weight:700">${bestE.drink}</div><div style="font-size:12px;color:#555;margin-top:2px">${bestE.shop}</div></div>`;
+    if (worstE) bwHtml += `<div style="flex:1;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:12px"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">💀 Biggest Miss</div><div style="font-size:14px;font-weight:700">${worstE.drink}</div><div style="font-size:12px;color:#555;margin-top:2px">${worstE.shop}</div></div>`;
+    bwHtml += `</div>`;
+  } else if (allE.length) {
+    bwHtml = `<p style="font-size:12px;color:#333;margin-bottom:14px">Tap ⭐ on a drink to mark best of tour · 💀 to mark biggest miss</p>`;
+  }
+
   if (!visited.length) { document.getElementById('score-shops').innerHTML = '<p style="color:#222;font-size:14px;margin-bottom:16px">No drinks logged yet.</p>'; return; }
   visited.forEach(([id, shop]) => {
     html += `<div class="score-shop"><div class="score-shop-name">${shop.icon} ${shop.name}</div>`;
@@ -600,7 +624,7 @@ function renderScorecard() {
     });
     html += `</div>`;
   });
-  document.getElementById('score-shops').innerHTML = html;
+  document.getElementById('score-shops').innerHTML = bwHtml + html;
 }
 
 function renderAll() {
@@ -609,6 +633,26 @@ function renderAll() {
   const p = getPeople();
   document.getElementById('ptog0-l').textContent = p[0];
   document.getElementById('ptog1-l').textContent = p[1];
+}
+
+function markAs(shopId, idx, key) {
+  const d = getData();
+  if (!d.logs?.[shopId]) return;
+  const entry = d.logs[shopId][idx];
+  const isNowMarked = !entry[key];
+
+  // Clear existing mark of same type across all shops
+  if (isNowMarked) {
+    Object.values(d.logs).forEach(shop => shop.forEach(e => { delete e[key]; }));
+  }
+
+  // Toggle on this entry
+  if (isNowMarked) entry[key] = true;
+  else delete entry[key];
+
+  saveData(d);
+  Object.keys(SHOPS).forEach(renderShop);
+  if (curView === 'score') renderScorecard();
 }
 
 function deleteLog(shopId, idx) {
@@ -722,8 +766,8 @@ function generateCard() {
   Object.values(logs).forEach(s=>s.forEach(e=>{ e.rating==='good'?pGood[e.person]++:pBad[e.person]++; }));
   const visited = Object.entries(SHOPS).filter(([id])=>(logs[id]||[]).length>0);
   const allEntries = Object.entries(logs).flatMap(([id,es])=>es.map(e=>({...e,shop:SHOPS[id].name})));
-  const goods = allEntries.filter(e=>e.rating==='good');
-  const bads  = allEntries.filter(e=>e.rating==='bad');
+  const goods = allEntries.filter(e=>e.best===true);
+  const bads  = allEntries.filter(e=>e.worst===true);
 
   // Height calc
   let H = 56+44+14+58+32+48+100+40;
