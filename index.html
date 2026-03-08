@@ -396,7 +396,10 @@
       <div class="kicker">The Verdict</div>
       <h2>Scorecard 🏆</h2>
       <div id="scorecard"></div>
-      <button onclick="clearAll()" style="margin-top:24px;background:none;border:1px solid #222;color:#333;padding:8px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">Clear all logs</button>
+      <div style="display:flex;gap:10px;margin-top:24px">
+        <button onclick="exportReport()" id="export-btn" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">⬆️ Share Report</button>
+        <button onclick="clearAll()" style="background:none;border:1px solid #222;color:#333;padding:12px 16px;border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;">Clear</button>
+      </div>
     </div>
   </div>
 
@@ -569,6 +572,69 @@ function deleteLog(shopId, idx) {
   saveData(d);
   renderShop(shopId);
   renderScorecard();
+}
+
+function exportReport() {
+  const d = getData();
+  const logs = d.logs || {};
+  const people = getPeople();
+  const date = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+
+  // Tally
+  const pGood = [0,0], pBad = [0,0];
+  let totalDrinks = 0;
+  Object.values(logs).forEach(shop => shop.forEach(e => {
+    if (e.rating === 'good') pGood[e.person]++; else pBad[e.person]++;
+    totalDrinks++;
+  }));
+
+  let lines = [];
+  lines.push('☕ Woodlands Coffee Tour Report');
+  lines.push(date);
+  lines.push('');
+  lines.push(`👤 ${people[0]}: ${pGood[0]} 👍  ${pBad[0]} 👎`);
+  lines.push(`👤 ${people[1]}: ${pGood[1]} 👍  ${pBad[1]} 👎`);
+  lines.push(`Total drinks tried: ${totalDrinks}`);
+  lines.push('');
+  lines.push('─────────────────────');
+
+  Object.entries(SHOPS).forEach(([id, shop]) => {
+    const entries = logs[id] || [];
+    if (entries.length === 0) return;
+    lines.push('');
+    lines.push(shop.name);
+    entries.forEach(e => {
+      const icon = e.rating === 'good' ? '👍' : '👎';
+      lines.push(`  ${icon} ${people[e.person]}: ${e.drink}`);
+    });
+  });
+
+  // Best & worst
+  const allEntries = Object.entries(logs).flatMap(([id, es]) => es.map(e => ({ ...e, shop: SHOPS[id].name })));
+  const good = allEntries.filter(e => e.rating === 'good');
+  const bad  = allEntries.filter(e => e.rating === 'bad');
+  if (good.length || bad.length) {
+    lines.push('');
+    lines.push('─────────────────────');
+    if (good.length) lines.push(`⭐ Best: ${good[good.length-1].drink} @ ${good[good.length-1].shop}`);
+    if (bad.length)  lines.push(`❌ Pass: ${bad[bad.length-1].drink} @ ${bad[bad.length-1].shop}`);
+  }
+
+  lines.push('');
+  lines.push('carlobney.github.io/woodlands-coffee-deck/');
+
+  const text = lines.join('\n');
+
+  if (navigator.share) {
+    navigator.share({ title: 'Woodlands Coffee Tour', text })
+      .catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('export-btn');
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => btn.textContent = '⬆️ Share Report', 2000);
+    });
+  }
 }
 
 function clearAll() {
