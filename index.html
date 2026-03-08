@@ -225,15 +225,36 @@
       <hr class="div">
       <div class="section-label">6 stops on the list</div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        ${Object.entries({
-          conduit:'Conduit Coffee', thirdgen:'Third Gen Coffee', omecalli:'Ome Calli Café',
-          serenity:'Serenity Sips', bluedoor:'Blue Door Coffee', bluestone:'Bluestone Lane'
-        }).map(([id,name],i)=>`
-          <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border-radius:10px;cursor:pointer" onclick="navTo('${id}')">
-            <span style="color:var(--muted);font-size:13px;width:20px">${i+1}</span>
-            <span style="font-size:15px;font-weight:600;flex:1">${name}</span>
-            <span style="color:#2a2a2a">→</span>
-          </div>`).join('')}
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border-radius:10px;cursor:pointer" onclick="navTo('conduit')">
+          <span style="color:var(--muted);font-size:13px;width:20px">1</span>
+          <span style="font-size:15px;font-weight:600;flex:1">Conduit Coffee</span>
+          <span style="color:#2a2a2a">→</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border-radius:10px;cursor:pointer" onclick="navTo('thirdgen')">
+          <span style="color:var(--muted);font-size:13px;width:20px">2</span>
+          <span style="font-size:15px;font-weight:600;flex:1">Third Gen Coffee</span>
+          <span style="color:#2a2a2a">→</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border-radius:10px;cursor:pointer" onclick="navTo('omecalli')">
+          <span style="color:var(--muted);font-size:13px;width:20px">3</span>
+          <span style="font-size:15px;font-weight:600;flex:1">Ome Calli Café</span>
+          <span style="color:#2a2a2a">→</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border-radius:10px;cursor:pointer" onclick="navTo('serenity')">
+          <span style="color:var(--muted);font-size:13px;width:20px">4</span>
+          <span style="font-size:15px;font-weight:600;flex:1">Serenity Sips</span>
+          <span style="color:#2a2a2a">→</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border-radius:10px;cursor:pointer" onclick="navTo('bluedoor')">
+          <span style="color:var(--muted);font-size:13px;width:20px">5</span>
+          <span style="font-size:15px;font-weight:600;flex:1">Blue Door Coffee</span>
+          <span style="color:#2a2a2a">→</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border-radius:10px;cursor:pointer" onclick="navTo('bluestone')">
+          <span style="color:var(--muted);font-size:13px;width:20px">6</span>
+          <span style="font-size:15px;font-weight:600;flex:1">Bluestone Lane</span>
+          <span style="color:#2a2a2a">→</span>
+        </div>
       </div>
     </div>
 
